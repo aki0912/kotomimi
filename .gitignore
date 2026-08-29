@@ -10,3 +10,4 @@ session.txt
 Thumbs.db
 .claude/
 .playwright-mcp/
+artifacts/
