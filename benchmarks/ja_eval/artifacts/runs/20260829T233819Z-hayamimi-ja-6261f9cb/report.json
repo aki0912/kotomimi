@@ -1,0 +1,517 @@
+{
+  "artifacts": {
+    "hypotheses_sha256": "e1ceeff6136569cd1852d0ed377038b92e38f6db806353c59a7d4fabfc293d9f"
+  },
+  "data_provenance": {
+    "common_voice_ja_26": {
+      "attribution": {
+        "creator": "Mozilla Foundation / Common Voice contributors",
+        "dataset_id": "common_voice_ja_26",
+        "required": false,
+        "source_url": "https://mozilladatacollective.com/datasets/cmqim4lxy00tunr07cjkcupeg",
+        "spdx": "CC0-1.0",
+        "title": "Common Voice Scripted Speech 26.0 - Japanese"
+      },
+      "audit_status": "not-run",
+      "license_policy": "strict",
+      "license_spdx": "CC0-1.0",
+      "prepared_lock_sha256": "87352287293cfb7f98ea8d6408a924a2435ed9b314f4c29850a28fc1a511a09e",
+      "prepared_manifest_sha256": "0497e82fbb3d4a82f2876108cfbad9c850a16a98b803ef2924c6b2b25996b19e",
+      "selected_count": 3381,
+      "source_manifest_sha256": "6f945ec4fc82e1a0232b1aab29b6effd8ac6e907e4655f8d1c2fb2f8cfdcc4a4",
+      "source_release": "cv-corpus-26.0-2026-06-12",
+      "source_revision": null,
+      "source_split": "test",
+      "source_view": "stress",
+      "version": "26.0"
+    },
+    "fleurs_ja": {
+      "attribution": {
+        "creator": "Google",
+        "dataset_id": "fleurs_ja",
+        "required": true,
+        "source_url": "https://huggingface.co/datasets/google/fleurs",
+        "spdx": "CC-BY-4.0",
+        "title": "FLEURS - Japanese"
+      },
+      "audit_status": "not-run",
+      "license_policy": "strict",
+      "license_spdx": "CC-BY-4.0",
+      "prepared_lock_sha256": "d4b95bdd6c5b9bd849b47fe38b31880b27314c643f2fb57c7aad1af95cf6c7b5",
+      "prepared_manifest_sha256": "2ea73137377569b052f0e9228c1d36fb3eb9b62acc297d65ae65398f4f1844b8",
+      "selected_count": 446,
+      "source_manifest_sha256": "bcc24cba91c7054f0e5ce3fa85a52fc7afec8b0b6792b043043f198194fc58c3",
+      "source_release": null,
+      "source_revision": "70bb2e84b976b7e960aa89f1c648e09c59f894dd",
+      "source_split": "test",
+      "source_view": "stress",
+      "version": "70bb2e84b976b7e960aa89f1c648e09c59f894dd"
+    }
+  },
+  "datasets": {
+    "common_voice_ja_26": {
+      "audio_s": 17722.487999999983,
+      "decode_failures": 0,
+      "decode_s": 186.0538791133731,
+      "latency_ms_p50": 49.09866699017584,
+      "latency_ms_p95": 97.1745419956278,
+      "normalized": {
+        "cer": 0.22666309810568888,
+        "deletions": 9243,
+        "insertions": 1149,
+        "reference_chars": 67254,
+        "substitutions": 4852
+      },
+      "peak_rss_bytes": 637517824,
+      "raw": {
+        "cer": 0.27618092691622104,
+        "deletions": 13555,
+        "insertions": 1044,
+        "reference_chars": 71808,
+        "substitutions": 5233
+      },
+      "rtf": 0.010498180566598398,
+      "samples": 3381,
+      "sentence_exact_rate": 0.40609287193138127
+    },
+    "fleurs_ja": {
+      "audio_s": 5679.839999999996,
+      "decode_failures": 0,
+      "decode_s": 54.00964434235357,
+      "latency_ms_p50": 114.6642710082233,
+      "latency_ms_p95": 188.7835735178669,
+      "normalized": {
+        "cer": 0.08300162836982088,
+        "deletions": 558,
+        "insertions": 233,
+        "reference_chars": 22108,
+        "substitutions": 1044
+      },
+      "peak_rss_bytes": 831635456,
+      "raw": {
+        "cer": 0.14122121276146207,
+        "deletions": 1979,
+        "insertions": 187,
+        "reference_chars": 23665,
+        "substitutions": 1176
+      },
+      "rtf": 0.00950900806050058,
+      "samples": 446,
+      "sentence_exact_rate": 0.19955156950672645
+    }
+  },
+  "environment": {
+    "machine": "arm64",
+    "os": "Darwin",
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "python": "3.11.9",
+    "threads": 4
+  },
+  "failures": [],
+  "metrics": {
+    "dataset_macro_cer": 0.15483236323775487,
+    "decode_failures": 0,
+    "deletions": 9801,
+    "insertions": 1382,
+    "normalized_micro_cer": 0.19112150578545692,
+    "p50_latency_ms": 52.37854100414552,
+    "p95_latency_ms": 130.03271249763202,
+    "peak_rss_bytes": 831635456,
+    "raw_micro_cer": 0.2427283106218512,
+    "reference_chars": 89362,
+    "rtf": 0.010258104384133333,
+    "sentence_exact_rate": 0.38202247191011235,
+    "substitutions": 5896
+  },
+  "qc": {
+    "flagged_samples": 3827,
+    "view": "stress"
+  },
+  "run_id": "20260829T233819Z-hayamimi-ja-6261f9cb",
+  "schema_version": 1,
+  "subsets": {
+    "digits": {
+      "digit-containing": {
+        "audio_s": 1905.3000000000004,
+        "decode_failures": 0,
+        "decode_s": 18.16073133406462,
+        "latency_ms_p50": 119.72379151848145,
+        "latency_ms_p95": 201.59699649811944,
+        "normalized": {
+          "cer": 0.13042891826274616,
+          "deletions": 242,
+          "insertions": 107,
+          "reference_chars": 7414,
+          "substitutions": 618
+        },
+        "peak_rss_bytes": 831635456,
+        "raw": {
+          "cer": 0.18827664114472198,
+          "deletions": 730,
+          "insertions": 82,
+          "reference_chars": 7967,
+          "substitutions": 688
+        },
+        "rtf": 0.009531691247606475,
+        "samples": 142,
+        "sentence_exact_rate": 0.0
+      },
+      "no-ascii-digits": {
+        "audio_s": 21497.02800000002,
+        "decode_failures": 0,
+        "decode_s": 221.90279212166206,
+        "latency_ms_p50": 51.41558300238103,
+        "latency_ms_p95": 121.04420820833184,
+        "normalized": {
+          "cer": 0.1966124859667106,
+          "deletions": 9559,
+          "insertions": 1275,
+          "reference_chars": 81948,
+          "substitutions": 5278
+        },
+        "peak_rss_bytes": 831635456,
+        "raw": {
+          "cer": 0.24768587296871072,
+          "deletions": 14804,
+          "insertions": 1149,
+          "reference_chars": 87506,
+          "substitutions": 5721
+        },
+        "rtf": 0.010322487002466659,
+        "samples": 3685,
+        "sentence_exact_rate": 0.3967435549525102
+      }
+    },
+    "duration": {
+      "long": {
+        "audio_s": 10380.035999999993,
+        "decode_failures": 0,
+        "decode_s": 99.61008733152994,
+        "latency_ms_p50": 98.54316600831226,
+        "latency_ms_p95": 171.6879419080214,
+        "normalized": {
+          "cer": 0.10408163265306122,
+          "deletions": 1357,
+          "insertions": 581,
+          "reference_chars": 42140,
+          "substitutions": 2448
+        },
+        "peak_rss_bytes": 831635456,
+        "raw": {
+          "cer": 0.16464532661762432,
+          "deletions": 4237,
+          "insertions": 461,
+          "reference_chars": 45267,
+          "substitutions": 2755
+        },
+        "rtf": 0.009596314245107629,
+        "samples": 915,
+        "sentence_exact_rate": 0.17814207650273223
+      },
+      "medium": {
+        "audio_s": 11670.539999999966,
+        "decode_failures": 0,
+        "decode_s": 123.39086540875724,
+        "latency_ms_p50": 49.73247949965298,
+        "latency_ms_p95": 75.2681455007405,
+        "normalized": {
+          "cer": 0.1755892928485817,
+          "deletions": 3562,
+          "insertions": 738,
+          "reference_chars": 40048,
+          "substitutions": 2732
+        },
+        "peak_rss_bytes": 831635456,
+        "raw": {
+          "cer": 0.22475317348377996,
+          "deletions": 5934,
+          "insertions": 706,
+          "reference_chars": 42540,
+          "substitutions": 2921
+        },
+        "rtf": 0.010572849706076805,
+        "samples": 2354,
+        "sentence_exact_rate": 0.46983857264231094
+      },
+      "short": {
+        "audio_s": 1351.7520000000038,
+        "decode_failures": 0,
+        "decode_s": 17.062570715439506,
+        "latency_ms_p50": 30.028187000425532,
+        "latency_ms_p95": 37.49984738969942,
+        "normalized": {
+          "cer": 0.7890995260663507,
+          "deletions": 4882,
+          "insertions": 63,
+          "reference_chars": 7174,
+          "substitutions": 716
+        },
+        "peak_rss_bytes": 637517824,
+        "raw": {
+          "cer": 0.8035481346204018,
+          "deletions": 5363,
+          "insertions": 64,
+          "reference_chars": 7666,
+          "substitutions": 733
+        },
+        "rtf": 0.012622559992838522,
+        "samples": 558,
+        "sentence_exact_rate": 0.34587813620071683
+      }
+    },
+    "gender": {
+      "do_not_wish_to_say": {
+        "audio_s": 57.16799999999999,
+        "decode_failures": 0,
+        "decode_s": 0.5707128359645139,
+        "latency_ms_p50": 43.23599999770522,
+        "latency_ms_p95": 104.19054198428057,
+        "normalized": {
+          "cer": 0.7752525252525253,
+          "deletions": 268,
+          "insertions": 2,
+          "reference_chars": 396,
+          "substitutions": 37
+        },
+        "peak_rss_bytes": 636862464,
+        "raw": {
+          "cer": 0.7945823927765236,
+          "deletions": 314,
+          "insertions": 1,
+          "reference_chars": 443,
+          "substitutions": 37
+        },
+        "rtf": 0.009983082073266758,
+        "samples": 11,
+        "sentence_exact_rate": 0.09090909090909091
+      },
+      "female": {
+        "audio_s": 1102.9800000000002,
+        "decode_failures": 0,
+        "decode_s": 10.484210006252397,
+        "latency_ms_p50": 129.0725000144448,
+        "latency_ms_p95": 207.76874969305936,
+        "normalized": {
+          "cer": 0.07160292921074043,
+          "deletions": 75,
+          "insertions": 52,
+          "reference_chars": 3687,
+          "substitutions": 137
+        },
+        "peak_rss_bytes": 831635456,
+        "raw": {
+          "cer": 0.12677845528455284,
+          "deletions": 302,
+          "insertions": 38,
+          "reference_chars": 3936,
+          "substitutions": 159
+        },
+        "rtf": 0.009505349150712066,
+        "samples": 79,
+        "sentence_exact_rate": 0.27848101265822783
+      },
+      "female_feminine": {
+        "audio_s": 1776.384,
+        "decode_failures": 0,
+        "decode_s": 18.891390922188293,
+        "latency_ms_p50": 44.26629201043397,
+        "latency_ms_p95": 92.7485524880467,
+        "normalized": {
+          "cer": 0.3306867251706366,
+          "deletions": 1585,
+          "insertions": 174,
+          "reference_chars": 7179,
+          "substitutions": 615
+        },
+        "peak_rss_bytes": 637501440,
+        "raw": {
+          "cer": 0.3777057679844459,
+          "deletions": 2089,
+          "insertions": 172,
+          "reference_chars": 7715,
+          "substitutions": 653
+        },
+        "rtf": 0.010634745033837443,
+        "samples": 376,
+        "sentence_exact_rate": 0.3351063829787234
+      },
+      "male": {
+        "audio_s": 4576.859999999998,
+        "decode_failures": 0,
+        "decode_s": 43.52543433610117,
+        "latency_ms_p50": 113.44029099564068,
+        "latency_ms_p95": 178.74458320438862,
+        "normalized": {
+          "cer": 0.08528310080885945,
+          "deletions": 483,
+          "insertions": 181,
+          "reference_chars": 18421,
+          "substitutions": 907
+        },
+        "peak_rss_bytes": 831635456,
+        "raw": {
+          "cer": 0.14410259009579807,
+          "deletions": 1677,
+          "insertions": 149,
+          "reference_chars": 19729,
+          "substitutions": 1017
+        },
+        "rtf": 0.009509889823175974,
+        "samples": 367,
+        "sentence_exact_rate": 0.18256130790190736
+      },
+      "male_masculine": {
+        "audio_s": 2408.1600000000003,
+        "decode_failures": 0,
+        "decode_s": 25.871555282414192,
+        "latency_ms_p50": 47.322124999482185,
+        "latency_ms_p95": 91.81437501683831,
+        "normalized": {
+          "cer": 0.36080691642651297,
+          "deletions": 2666,
+          "insertions": 187,
+          "reference_chars": 10410,
+          "substitutions": 903
+        },
+        "peak_rss_bytes": 637501440,
+        "raw": {
+          "cer": 0.4017455461579989,
+          "deletions": 3342,
+          "insertions": 182,
+          "reference_chars": 11114,
+          "substitutions": 941
+        },
+        "rtf": 0.010743287523426263,
+        "samples": 501,
+        "sentence_exact_rate": 0.2934131736526946
+      },
+      "unknown": {
+        "audio_s": 13480.776000000002,
+        "decode_failures": 0,
+        "decode_s": 140.72022007280611,
+        "latency_ms_p50": 50.39929199847393,
+        "latency_ms_p95": 98.85360839543867,
+        "normalized": {
+          "cer": 0.17875337433274474,
+          "deletions": 4724,
+          "insertions": 786,
+          "reference_chars": 49269,
+          "substitutions": 3297
+        },
+        "peak_rss_bytes": 637517824,
+        "raw": {
+          "cer": 0.23033729252322216,
+          "deletions": 7810,
+          "insertions": 689,
+          "reference_chars": 52536,
+          "substitutions": 3602
+        },
+        "rtf": 0.010438584549791947,
+        "samples": 2493,
+        "sentence_exact_rate": 0.4408343361411953
+      }
+    },
+    "latin": {
+      "latin-containing": {
+        "audio_s": 809.748,
+        "decode_failures": 0,
+        "decode_s": 7.799821667897049,
+        "latency_ms_p50": 107.89133350772317,
+        "latency_ms_p95": 208.59106670104666,
+        "normalized": {
+          "cer": 0.1541478129713424,
+          "deletions": 179,
+          "insertions": 33,
+          "reference_chars": 3315,
+          "substitutions": 299
+        },
+        "peak_rss_bytes": 831619072,
+        "raw": {
+          "cer": 0.2543496271748136,
+          "deletions": 414,
+          "insertions": 41,
+          "reference_chars": 3621,
+          "substitutions": 466
+        },
+        "rtf": 0.009632406215139833,
+        "samples": 72,
+        "sentence_exact_rate": 0.16666666666666666
+      },
+      "no-latin": {
+        "audio_s": 22592.580000000024,
+        "decode_failures": 0,
+        "decode_s": 232.26370178782963,
+        "latency_ms_p50": 52.07291600527242,
+        "latency_ms_p95": 125.97547871991988,
+        "normalized": {
+          "cer": 0.19254593419875185,
+          "deletions": 9622,
+          "insertions": 1349,
+          "reference_chars": 86047,
+          "substitutions": 5597
+        },
+        "peak_rss_bytes": 831635456,
+        "raw": {
+          "cer": 0.24227017375778426,
+          "deletions": 15120,
+          "insertions": 1190,
+          "reference_chars": 91852,
+          "substitutions": 5943
+        },
+        "rtf": 0.010280530235494547,
+        "samples": 3755,
+        "sentence_exact_rate": 0.38615179760319573
+      }
+    },
+    "qc": {
+      "flagged": {
+        "audio_s": 23402.32800000004,
+        "decode_failures": 0,
+        "decode_s": 240.06352345572668,
+        "latency_ms_p50": 52.37854100414552,
+        "latency_ms_p95": 130.03271249763202,
+        "normalized": {
+          "cer": 0.19112150578545692,
+          "deletions": 9801,
+          "insertions": 1382,
+          "reference_chars": 89362,
+          "substitutions": 5896
+        },
+        "peak_rss_bytes": 831635456,
+        "raw": {
+          "cer": 0.2427283106218512,
+          "deletions": 15534,
+          "insertions": 1231,
+          "reference_chars": 95473,
+          "substitutions": 6409
+        },
+        "rtf": 0.010258104384133333,
+        "samples": 3827,
+        "sentence_exact_rate": 0.38202247191011235
+      }
+    }
+  },
+  "suite": {
+    "evaluation_view": "stress",
+    "lock_sha256": "8c981744a9623bcc6cecb23ff4305ee20ec60966f56fe10f12f8c4db4afad848",
+    "manifest_sha256": "8d3ba49f7898c76cb8a3d85a9b1d071bef7391d4c6e4823e54095a1bfcfe7d9d",
+    "name": "quality-stress",
+    "purpose": "quality_stress",
+    "quality_status": "experimental",
+    "release_gate_eligible": false,
+    "version": 1
+  },
+  "system": {
+    "forced_lang": "ja",
+    "git_commit": "6261f9cbe6cf047ff0e9e37d7c8aafc4c1769cdd",
+    "git_dirty": false,
+    "id": "hayamimi-ja",
+    "model_files": {
+      "decoder-epoch-35-avg-1.int8.onnx": "sha256:d0179db78a2e65445c5c3dc41e94c62068fc539fe4e45060e32f438cca76432f",
+      "encoder-epoch-35-avg-1.int8.onnx": "sha256:ead1579e118b821a767242a8eb9272634b0e63ba16f8dfc4d126732406eae268",
+      "joiner-epoch-35-avg-1.int8.onnx": "sha256:c7f4ba40a8ae307a6c30b5c06e2570add04466bcb45bab62699f0ec5d00ed495",
+      "tokens.txt": "sha256:144f8a4f639373a1bdf7eabb2437482ef64b0cc5db24ad27cce65f293e4faa24"
+    },
+    "punctuate": false
+  }
+}

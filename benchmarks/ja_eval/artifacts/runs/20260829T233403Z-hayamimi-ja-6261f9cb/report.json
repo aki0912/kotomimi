@@ -1,0 +1,345 @@
+{
+  "artifacts": {
+    "hypotheses_sha256": "8e1df33763fe66cc6ea588e28e97f7a7bae14ecd5814a67fc6bb4ea473b122e4"
+  },
+  "data_provenance": {
+    "fleurs_ja": {
+      "attribution": {
+        "creator": "Google",
+        "dataset_id": "fleurs_ja",
+        "required": true,
+        "source_url": "https://huggingface.co/datasets/google/fleurs",
+        "spdx": "CC-BY-4.0",
+        "title": "FLEURS - Japanese"
+      },
+      "audit_status": "pending",
+      "license_policy": "strict",
+      "license_spdx": "CC-BY-4.0",
+      "prepared_lock_sha256": "d4b95bdd6c5b9bd849b47fe38b31880b27314c643f2fb57c7aad1af95cf6c7b5",
+      "prepared_manifest_sha256": "2ea73137377569b052f0e9228c1d36fb3eb9b62acc297d65ae65398f4f1844b8",
+      "selected_count": 204,
+      "source_manifest_sha256": "964b171075c6151168be40e3db9f769c3d2f513d87db5795e7cb2dfcdfc8ac20",
+      "source_release": null,
+      "source_revision": "70bb2e84b976b7e960aa89f1c648e09c59f894dd",
+      "source_split": "test",
+      "source_view": "clean",
+      "version": "70bb2e84b976b7e960aa89f1c648e09c59f894dd"
+    }
+  },
+  "datasets": {
+    "fleurs_ja": {
+      "audio_s": 2831.2799999999993,
+      "decode_failures": 0,
+      "decode_s": 26.022725582210114,
+      "latency_ms_p50": 121.16766649705824,
+      "latency_ms_p95": 190.09363754012156,
+      "normalized": {
+        "cer": 0.09433962264150944,
+        "deletions": 318,
+        "insertions": 107,
+        "reference_chars": 10547,
+        "substitutions": 570
+      },
+      "peak_rss_bytes": 628080640,
+      "raw": {
+        "cer": 0.15049276391725117,
+        "deletions": 980,
+        "insertions": 89,
+        "reference_chars": 11263,
+        "substitutions": 626
+      },
+      "rtf": 0.009191152264067885,
+      "samples": 204,
+      "sentence_exact_rate": 0.23529411764705882
+    }
+  },
+  "environment": {
+    "machine": "arm64",
+    "os": "Darwin",
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "python": "3.11.9",
+    "threads": 4
+  },
+  "failures": [],
+  "metrics": {
+    "dataset_macro_cer": 0.09433962264150944,
+    "decode_failures": 0,
+    "deletions": 318,
+    "insertions": 107,
+    "normalized_micro_cer": 0.09433962264150944,
+    "p50_latency_ms": 121.16766649705824,
+    "p95_latency_ms": 190.09363754012156,
+    "peak_rss_bytes": 628080640,
+    "raw_micro_cer": 0.15049276391725117,
+    "reference_chars": 10547,
+    "rtf": 0.009191152264067885,
+    "sentence_exact_rate": 0.23529411764705882,
+    "substitutions": 570
+  },
+  "qc": {
+    "flagged_samples": 18,
+    "view": "clean"
+  },
+  "run_id": "20260829T233403Z-hayamimi-ja-6261f9cb",
+  "schema_version": 1,
+  "subsets": {
+    "digits": {
+      "digit-containing": {
+        "audio_s": 1130.7,
+        "decode_failures": 0,
+        "decode_s": 10.399387879064307,
+        "latency_ms_p50": 130.59562499984168,
+        "latency_ms_p95": 200.31208380241878,
+        "normalized": {
+          "cer": 0.13644688644688643,
+          "deletions": 158,
+          "insertions": 63,
+          "reference_chars": 4368,
+          "substitutions": 375
+        },
+        "peak_rss_bytes": 628080640,
+        "raw": {
+          "cer": 0.19178960872354073,
+          "deletions": 434,
+          "insertions": 51,
+          "reference_chars": 4677,
+          "substitutions": 412
+        },
+        "rtf": 0.00919730068016654,
+        "samples": 77,
+        "sentence_exact_rate": 0.0
+      },
+      "no-ascii-digits": {
+        "audio_s": 1700.58,
+        "decode_failures": 0,
+        "decode_s": 15.623337703145808,
+        "latency_ms_p50": 119.52962499344721,
+        "latency_ms_p95": 168.06180790008509,
+        "normalized": {
+          "cer": 0.06457355559151966,
+          "deletions": 160,
+          "insertions": 44,
+          "reference_chars": 6179,
+          "substitutions": 195
+        },
+        "peak_rss_bytes": 628080640,
+        "raw": {
+          "cer": 0.12116610993015488,
+          "deletions": 546,
+          "insertions": 38,
+          "reference_chars": 6586,
+          "substitutions": 214
+        },
+        "rtf": 0.009187064238757252,
+        "samples": 127,
+        "sentence_exact_rate": 0.3779527559055118
+      }
+    },
+    "duration": {
+      "long": {
+        "audio_s": 2816.5199999999995,
+        "decode_failures": 0,
+        "decode_s": 25.875718248222256,
+        "latency_ms_p50": 121.31627049529925,
+        "latency_ms_p95": 190.2592958387686,
+        "normalized": {
+          "cer": 0.09487032799389779,
+          "deletions": 318,
+          "insertions": 107,
+          "reference_chars": 10488,
+          "substitutions": 570
+        },
+        "peak_rss_bytes": 628080640,
+        "raw": {
+          "cer": 0.1509198071084122,
+          "deletions": 975,
+          "insertions": 89,
+          "reference_chars": 11198,
+          "substitutions": 626
+        },
+        "rtf": 0.009187123914696952,
+        "samples": 202,
+        "sentence_exact_rate": 0.22772277227722773
+      },
+      "medium": {
+        "audio_s": 14.76,
+        "decode_failures": 0,
+        "decode_s": 0.14700733398785815,
+        "latency_ms_p50": 73.50366699392907,
+        "latency_ms_p95": 76.94594198546838,
+        "normalized": {
+          "cer": 0.0,
+          "deletions": 0,
+          "insertions": 0,
+          "reference_chars": 59,
+          "substitutions": 0
+        },
+        "peak_rss_bytes": 628064256,
+        "raw": {
+          "cer": 0.07692307692307693,
+          "deletions": 5,
+          "insertions": 0,
+          "reference_chars": 65,
+          "substitutions": 0
+        },
+        "rtf": 0.009959846476142151,
+        "samples": 2,
+        "sentence_exact_rate": 1.0
+      }
+    },
+    "gender": {
+      "male": {
+        "audio_s": 2831.2799999999993,
+        "decode_failures": 0,
+        "decode_s": 26.022725582210114,
+        "latency_ms_p50": 121.16766649705824,
+        "latency_ms_p95": 190.09363754012156,
+        "normalized": {
+          "cer": 0.09433962264150944,
+          "deletions": 318,
+          "insertions": 107,
+          "reference_chars": 10547,
+          "substitutions": 570
+        },
+        "peak_rss_bytes": 628080640,
+        "raw": {
+          "cer": 0.15049276391725117,
+          "deletions": 980,
+          "insertions": 89,
+          "reference_chars": 11263,
+          "substitutions": 626
+        },
+        "rtf": 0.009191152264067885,
+        "samples": 204,
+        "sentence_exact_rate": 0.23529411764705882
+      }
+    },
+    "latin": {
+      "latin-containing": {
+        "audio_s": 307.32000000000005,
+        "decode_failures": 0,
+        "decode_s": 2.8872832949855365,
+        "latency_ms_p50": 169.90887551219203,
+        "latency_ms_p95": 253.94988929765532,
+        "normalized": {
+          "cer": 0.16534740545294635,
+          "deletions": 37,
+          "insertions": 24,
+          "reference_chars": 1137,
+          "substitutions": 127
+        },
+        "peak_rss_bytes": 625262592,
+        "raw": {
+          "cer": 0.22596548890714874,
+          "deletions": 95,
+          "insertions": 23,
+          "reference_chars": 1217,
+          "substitutions": 157
+        },
+        "rtf": 0.009395038705536691,
+        "samples": 18,
+        "sentence_exact_rate": 0.05555555555555555
+      },
+      "no-latin": {
+        "audio_s": 2523.9599999999996,
+        "decode_failures": 0,
+        "decode_s": 23.135442287224578,
+        "latency_ms_p50": 120.33602100564167,
+        "latency_ms_p95": 175.1016874986817,
+        "normalized": {
+          "cer": 0.08575982996811903,
+          "deletions": 281,
+          "insertions": 83,
+          "reference_chars": 9410,
+          "substitutions": 443
+        },
+        "peak_rss_bytes": 628080640,
+        "raw": {
+          "cer": 0.14134979096157674,
+          "deletions": 885,
+          "insertions": 66,
+          "reference_chars": 10046,
+          "substitutions": 469
+        },
+        "rtf": 0.009166326838469937,
+        "samples": 186,
+        "sentence_exact_rate": 0.25268817204301075
+      }
+    },
+    "qc": {
+      "flagged": {
+        "audio_s": 307.32000000000005,
+        "decode_failures": 0,
+        "decode_s": 2.8872832949855365,
+        "latency_ms_p50": 169.90887551219203,
+        "latency_ms_p95": 253.94988929765532,
+        "normalized": {
+          "cer": 0.16534740545294635,
+          "deletions": 37,
+          "insertions": 24,
+          "reference_chars": 1137,
+          "substitutions": 127
+        },
+        "peak_rss_bytes": 625262592,
+        "raw": {
+          "cer": 0.22596548890714874,
+          "deletions": 95,
+          "insertions": 23,
+          "reference_chars": 1217,
+          "substitutions": 157
+        },
+        "rtf": 0.009395038705536691,
+        "samples": 18,
+        "sentence_exact_rate": 0.05555555555555555
+      },
+      "unflagged": {
+        "audio_s": 2523.9599999999996,
+        "decode_failures": 0,
+        "decode_s": 23.135442287224578,
+        "latency_ms_p50": 120.33602100564167,
+        "latency_ms_p95": 175.1016874986817,
+        "normalized": {
+          "cer": 0.08575982996811903,
+          "deletions": 281,
+          "insertions": 83,
+          "reference_chars": 9410,
+          "substitutions": 443
+        },
+        "peak_rss_bytes": 628080640,
+        "raw": {
+          "cer": 0.14134979096157674,
+          "deletions": 885,
+          "insertions": 66,
+          "reference_chars": 10046,
+          "substitutions": 469
+        },
+        "rtf": 0.009166326838469937,
+        "samples": 186,
+        "sentence_exact_rate": 0.25268817204301075
+      }
+    }
+  },
+  "suite": {
+    "evaluation_view": "clean",
+    "lock_sha256": "924974da0256264ef01a8249895151fdb7b1f2d7bacd3626f414d18d4d57c7cf",
+    "manifest_sha256": "78c11c1d44ff15471cb6359c54ca1344aab239802270a36e06e9799cbe3513ce",
+    "name": "fleurs-clean-candidate",
+    "purpose": "clean_candidate",
+    "quality_status": "candidate",
+    "release_gate_eligible": false,
+    "version": 1
+  },
+  "system": {
+    "forced_lang": "ja",
+    "git_commit": "6261f9cbe6cf047ff0e9e37d7c8aafc4c1769cdd",
+    "git_dirty": false,
+    "id": "hayamimi-ja",
+    "model_files": {
+      "decoder-epoch-35-avg-1.int8.onnx": "sha256:d0179db78a2e65445c5c3dc41e94c62068fc539fe4e45060e32f438cca76432f",
+      "encoder-epoch-35-avg-1.int8.onnx": "sha256:ead1579e118b821a767242a8eb9272634b0e63ba16f8dfc4d126732406eae268",
+      "joiner-epoch-35-avg-1.int8.onnx": "sha256:c7f4ba40a8ae307a6c30b5c06e2570add04466bcb45bab62699f0ec5d00ed495",
+      "tokens.txt": "sha256:144f8a4f639373a1bdf7eabb2437482ef64b0cc5db24ad27cce65f293e4faa24"
+    },
+    "punctuate": false
+  }
+}
