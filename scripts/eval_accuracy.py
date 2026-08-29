@@ -31,6 +31,8 @@ sys.stdout.reconfigure(encoding="utf-8")
 import jiwer
 import soundfile as sf
 
+from eval_common import cer_ja, levenshtein, normalize_ja
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 EVAL_DIR = os.path.join(ROOT, "testdata", "eval")
 MANIFEST_PATH = os.path.join(EVAL_DIR, "manifest.json")
@@ -229,48 +231,12 @@ def normalize_en(text: str) -> str:
     return text
 
 
-def normalize_ja(text: str) -> str:
-    text = unicodedata.normalize("NFKC", text)
-    text = _PUNCT_RE.sub("", text)
-    text = re.sub(r"\s+", "", text)
-    return text
-
-
-def levenshtein(a: str, b: str) -> int:
-    if a == b:
-        return 0
-    if len(a) == 0:
-        return len(b)
-    if len(b) == 0:
-        return len(a)
-    prev = list(range(len(b) + 1))
-    for i, ca in enumerate(a, start=1):
-        cur = [i] + [0] * len(b)
-        for j, cb in enumerate(b, start=1):
-            cost = 0 if ca == cb else 1
-            cur[j] = min(
-                prev[j] + 1,        # deletion
-                cur[j - 1] + 1,     # insertion
-                prev[j - 1] + cost  # substitution
-            )
-        prev = cur
-    return prev[-1]
-
-
 def wer_en(ref: str, hyp: str) -> float:
     r = normalize_en(ref)
     h = normalize_en(hyp)
     if len(r.split()) == 0:
         return 0.0
     return jiwer.wer(r, h)
-
-
-def cer_ja(ref: str, hyp: str):
-    r = normalize_ja(ref)
-    h = normalize_ja(hyp)
-    dist = levenshtein(r, h)
-    rate = dist / len(r) if len(r) > 0 else 0.0
-    return rate, dist, len(r)
 
 
 # ---------------------------------------------------------------------------
