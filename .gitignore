@@ -10,4 +10,9 @@ session.txt
 Thumbs.db
 .claude/
 .playwright-mcp/
-artifacts/
+/artifacts/
+benchmarks/ja_eval/data/
+benchmarks/ja_eval/artifacts/audits/
+benchmarks/ja_eval/artifacts/runs/*/hypotheses.jsonl
+benchmarks/ja_eval/licenses/approvals/*.json
+!benchmarks/ja_eval/licenses/approvals/.gitkeep

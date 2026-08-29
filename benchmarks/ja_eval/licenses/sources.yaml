@@ -1,0 +1,30 @@
+schema_version: 1
+sources:
+  common_voice_ja_26:
+    title: Common Voice Scripted Speech 26.0 - Japanese
+    creator: Mozilla Foundation / Common Voice contributors
+    license: CC0-1.0
+  fleurs_ja:
+    title: FLEURS - Japanese
+    creator: Google
+    license: CC-BY-4.0
+  spreds_u1_ja:
+    title: SPREDS-U1
+    creator: National Institute of Information and Communications Technology
+    license: CC-BY-4.0
+  cpjd:
+    title: CPJD Corpus
+    creator: Shinnosuke Takamichi and Hiroshi Saruwatari
+    license: CC-BY-SA-4.0
+  jvnv:
+    title: JVNV Corpus
+    creator: JVNV contributors
+    license: CC-BY-SA-4.0
+  jnv:
+    title: JNV Corpus
+    creator: JNV contributors
+    license: CC-BY-SA-4.0
+  ita_rion:
+    title: ITA-Corpus-Rion
+    creator: Rion-Dev contributors
+    license: CC-BY-4.0

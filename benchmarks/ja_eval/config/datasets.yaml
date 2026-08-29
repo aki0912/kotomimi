@@ -1,0 +1,121 @@
+schema_version: 1
+datasets:
+  common_voice_ja_26:
+    display_name: Common Voice Scripted Speech 26.0 - Japanese
+    adapter: common_voice
+    version: "26.0"
+    source_dataset_id: cmqim4lxy00tunr07cjkcupeg
+    expected_archive_name: common-voice-scripted-speech-26-0-japane-2e73a461.tar.gz
+    source_split: test
+    source_url: https://mozilladatacollective.com/datasets/cmqim4lxy00tunr07cjkcupeg
+    license:
+      spdx: CC0-1.0
+      policy: strict
+      commercial_use: true
+      attribution_required: false
+      redistribute_raw: false
+      restrictions: [no_speaker_reidentification, no_rehosting, no_resharing]
+    acquisition: {mode: api_or_local_archive}
+    expected: {rows: 9020}
+
+  fleurs_ja:
+    display_name: Google FLEURS Japanese
+    adapter: fleurs
+    version: "70bb2e84b976b7e960aa89f1c648e09c59f894dd"
+    source_repo: google/fleurs
+    source_revision: 70bb2e84b976b7e960aa89f1c648e09c59f894dd
+    source_config: ja_jp
+    source_split: test
+    source_url: https://huggingface.co/datasets/google/fleurs
+    license:
+      spdx: CC-BY-4.0
+      policy: strict
+      commercial_use: true
+      attribution_required: true
+      redistribute_raw: true
+      restrictions: []
+    acquisition: {mode: pinned_huggingface}
+    expected: {rows: 650}
+
+  spreds_u1_ja:
+    display_name: NICT SPREDS-U1 Japanese
+    adapter: spreds_u1
+    version: "2025-07-08"
+    source_split: official
+    source_url: https://nict.repo.nii.ac.jp/records/2000207
+    license:
+      spdx: CC-BY-4.0
+      policy: strict
+      commercial_use: true
+      attribution_required: true
+      redistribute_raw: false
+      restrictions: []
+    acquisition: {mode: local_archive}
+
+  cpjd:
+    display_name: Crowdsourced Parallel Speech Corpus of Japanese Dialects
+    adapter: cpjd
+    version: local-archive
+    source_split: official
+    source_url: https://sites.google.com/site/shinnosuketakamichi/research-topics/cpjd_corpus
+    license:
+      spdx: CC-BY-SA-4.0
+      policy: sharealike
+      commercial_use: true
+      attribution_required: true
+      redistribute_raw: false
+      share_alike: true
+      restrictions: []
+    acquisition: {mode: local_archive}
+
+  jvnv:
+    display_name: Japanese emotional speech corpus with Verbal content and Nonverbal Vocalizations
+    adapter: jvnv
+    version: local-archive
+    source_split: official
+    source_url: https://sites.google.com/site/shinnosuketakamichi/research-topics/jvnv_corpus
+    license:
+      spdx: CC-BY-SA-4.0
+      policy: sharealike
+      commercial_use: true
+      attribution_required: true
+      redistribute_raw: false
+      share_alike: true
+      restrictions: []
+    acquisition: {mode: local_archive}
+    expected: {rows: 1615}
+
+  jnv:
+    display_name: Japanese Nonverbal Vocalization corpus
+    adapter: jnv
+    version: local-archive
+    source_split: official
+    source_url: https://sites.google.com/site/shinnosuketakamichi/research-topics/jnv_corpus
+    license:
+      spdx: CC-BY-SA-4.0
+      policy: sharealike
+      commercial_use: true
+      attribution_required: true
+      redistribute_raw: false
+      share_alike: true
+      restrictions: []
+    acquisition: {mode: local_archive}
+    expected: {rows: 420}
+
+  ita_rion:
+    display_name: ITA-Corpus-Rion
+    adapter: ita_rion
+    version: local-archive
+    source_split: official
+    source_url: https://github.com/Rion-Dev/ita-corpus-Rion
+    license:
+      spdx: CC-BY-4.0
+      policy: manual-review
+      commercial_use: true
+      attribution_required: true
+      redistribute_raw: false
+      additional_terms: [no_resale]
+      restrictions: []
+    acquisition:
+      mode: local_archive
+      approval_required: true

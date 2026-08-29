@@ -1,0 +1,62 @@
+schema_version: 1
+suites:
+  smoke:
+    version: 1
+    seed: 20260829
+    allowed_policies: [strict]
+    optional_datasets: true
+    datasets:
+      common_voice_ja_26: {count: 5}
+      fleurs_ja: {count: 5}
+  minimum-fleurs:
+    version: 1
+    seed: 20260829
+    allowed_policies: [strict]
+    datasets:
+      fleurs_ja: {count: 300, selection: deterministic_stratified}
+  minimum-strict:
+    version: 1
+    seed: 20260829
+    allowed_policies: [strict]
+    datasets:
+      common_voice_ja_26: {count: 1000, selection: deterministic_stratified_speaker_aware}
+      fleurs_ja: {count: 300, selection: deterministic_stratified_speaker_aware}
+  minimum-strict-spreds:
+    version: 1
+    seed: 20260829
+    allowed_policies: [strict]
+    datasets:
+      common_voice_ja_26: {count: 1000, selection: deterministic_stratified_speaker_aware}
+      fleurs_ja: {count: 300, selection: deterministic_stratified_speaker_aware}
+      spreds_u1_ja: {count: 200, maximum_or_all: true}
+  minimum-extended:
+    version: 1
+    seed: 20260829
+    allowed_policies: [strict, sharealike]
+    requires_sharealike_opt_in: true
+    datasets:
+      common_voice_ja_26: {count: 1000}
+      fleurs_ja: {count: 300}
+      cpjd: {count: 200}
+      jvnv: {count: 120}
+      jnv: {count: 100, metric_family: nonverbal}
+  standard-strict:
+    version: 1
+    seed: 20260829
+    allowed_policies: [strict]
+    datasets:
+      common_voice_ja_26: {count: all}
+      fleurs_ja: {count: all}
+      spreds_u1_ja: {count: all, optional: true}
+  standard-extended:
+    version: 1
+    seed: 20260829
+    allowed_policies: [strict, sharealike]
+    requires_sharealike_opt_in: true
+    datasets:
+      common_voice_ja_26: {count: all}
+      fleurs_ja: {count: all}
+      spreds_u1_ja: {count: all, optional: true}
+      cpjd: {count: all}
+      jvnv: {count: all}
+      jnv: {count: all, metric_family: nonverbal}

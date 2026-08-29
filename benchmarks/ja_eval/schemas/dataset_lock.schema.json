@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kotomimi.local/schemas/ja-eval-dataset-lock-v1.json",
+  "title": "Kotomimi prepared dataset lock",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "dataset_id", "version", "source_split", "license_spdx",
+    "prepared_at", "adapter_version", "normalization_version", "row_count",
+    "source_manifest_sha256", "prepared_manifest_sha256", "tool_versions"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "dataset_id": {"type": "string", "minLength": 1},
+    "version": {"type": "string", "minLength": 1},
+    "source_revision": {"type": ["string", "null"]},
+    "source_split": {"type": "string", "minLength": 1},
+    "source_config": {"type": ["string", "null"]},
+    "license_spdx": {"type": "string", "minLength": 1},
+    "prepared_at": {"type": "string", "format": "date-time"},
+    "adapter_version": {"type": "integer", "minimum": 1},
+    "normalization_version": {"type": "integer", "minimum": 1},
+    "row_count": {"type": "integer", "minimum": 0},
+    "source_manifest_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "prepared_manifest_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "tool_versions": {"type": "object", "additionalProperties": {"type": "string"}}
+  }
+}
