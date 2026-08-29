@@ -4,6 +4,8 @@ datasets:
     display_name: Common Voice Scripted Speech 26.0 - Japanese
     adapter: common_voice
     version: "26.0"
+    source_release: cv-corpus-26.0-2026-06-12
+    source_locale: ja
     source_dataset_id: cmqim4lxy00tunr07cjkcupeg
     expected_archive_name: common-voice-scripted-speech-26-0-japane-2e73a461.tar.gz
     source_split: test

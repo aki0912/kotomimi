@@ -29,6 +29,20 @@ def test_safe_archive_extracts_regular_file(tmp_path):
     assert files[0].read_bytes() == b"wave"
 
 
+def test_safe_archive_accepts_posix_directory_markers(tmp_path):
+    archive = tmp_path / "directories.tar.gz"
+    with tarfile.open(archive, "w:gz") as handle:
+        directory = tarfile.TarInfo("corpus/ja/")
+        directory.type = tarfile.DIRTYPE
+        handle.addfile(directory)
+        content = b"metadata"
+        item = tarfile.TarInfo("corpus/ja/test.tsv")
+        item.size = len(content)
+        handle.addfile(item, io.BytesIO(content))
+    files = extract_tar_safely(archive, tmp_path / "out")
+    assert files[0].read_bytes() == b"metadata"
+
+
 @pytest.mark.parametrize("name", ["../escape", "/absolute", "audio\\escape.wav", "./dot.wav"])
 def test_archive_path_traversal_is_rejected(tmp_path, name):
     archive = tmp_path / "bad.tar.gz"

@@ -13,6 +13,7 @@
     "schema_version": {"const": 1},
     "dataset_id": {"type": "string", "minLength": 1},
     "version": {"type": "string", "minLength": 1},
+    "source_release": {"type": ["string", "null"]},
     "source_revision": {"type": ["string", "null"]},
     "source_split": {"type": "string", "minLength": 1},
     "source_config": {"type": ["string", "null"]},
@@ -22,6 +23,7 @@
     "normalization_version": {"type": "integer", "minimum": 1},
     "row_count": {"type": "integer", "minimum": 0},
     "source_manifest_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "source_archive_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
     "prepared_manifest_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
     "tool_versions": {"type": "object", "additionalProperties": {"type": "string"}}
   }

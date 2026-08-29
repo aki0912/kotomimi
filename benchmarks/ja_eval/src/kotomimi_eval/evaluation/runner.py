@@ -9,7 +9,6 @@ import sys
 
 import psutil
 
-from ..errors import DatasetPreparationError
 from ..hashing import sha256_file
 from ..licensing.registry import DatasetRegistry
 from ..licensing.attribution import attribution_requirement
@@ -138,6 +137,7 @@ def evaluate_suite(
                          / "dataset.lock.json")
         data_provenance[dataset_id] = {
             "version": record.version,
+            "source_release": record.raw.get("source_release"),
             "source_revision": record.raw.get("source_revision"),
             "source_split": record.source_split,
             "license_spdx": record.license.spdx,

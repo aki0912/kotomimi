@@ -51,25 +51,51 @@ def _dataset_list(args: argparse.Namespace) -> int:
 def _dataset_download(args: argparse.Namespace) -> int:
     registry = load_registry()
     record = registry.get(args.dataset_id)
-    if record.adapter != "fleurs":
-        raise DatasetPreparationError(
-            f"dataset download is not implemented for adapter {record.adapter!r} in PR E1")
-    from .datasets.fleurs import download_fleurs
+    if record.adapter == "fleurs":
+        from .datasets.fleurs import download_fleurs
 
-    receipt = download_fleurs(record, args.data_root)
-    print(f"downloaded {record.dataset_id} revision={receipt['source_revision']}")
+        receipt = download_fleurs(record, args.data_root)
+        detail = f"revision={receipt['source_revision']}"
+    elif record.adapter == "common_voice":
+        from .datasets.common_voice import download_common_voice
+
+        receipt = download_common_voice(record, args.data_root)
+        detail = f"version={receipt['version']}"
+    else:
+        raise DatasetPreparationError(
+            f"dataset download is not implemented for adapter {record.adapter!r}")
+    print(f"downloaded {record.dataset_id} {detail}")
+    return 0
+
+
+def _dataset_import(args: argparse.Namespace) -> int:
+    registry = load_registry()
+    record = registry.get(args.dataset_id)
+    if record.adapter != "common_voice":
+        raise DatasetPreparationError(
+            f"dataset import is not implemented for adapter {record.adapter!r}")
+    from .datasets.common_voice import import_common_voice_archive
+
+    receipt = import_common_voice_archive(record, args.data_root, args.archive)
+    print(f"imported {record.dataset_id} version={receipt['version']} "
+          f"sha256={receipt['archive']['sha256']}")
     return 0
 
 
 def _dataset_prepare(args: argparse.Namespace) -> int:
     registry = load_registry()
     record = registry.get(args.dataset_id)
-    if record.adapter != "fleurs":
-        raise DatasetPreparationError(
-            f"dataset prepare is not implemented for adapter {record.adapter!r} in PR E1")
-    from .datasets.fleurs import prepare_fleurs
+    if record.adapter == "fleurs":
+        from .datasets.fleurs import prepare_fleurs
 
-    prepared = prepare_fleurs(record, args.data_root)
+        prepared = prepare_fleurs(record, args.data_root)
+    elif record.adapter == "common_voice":
+        from .datasets.common_voice import prepare_common_voice
+
+        prepared = prepare_common_voice(record, args.data_root)
+    else:
+        raise DatasetPreparationError(
+            f"dataset prepare is not implemented for adapter {record.adapter!r}")
     print(f"prepared {prepared.dataset_id}: rows={prepared.row_count} "
           f"manifest_sha256={prepared.manifest_sha256}")
     return 0
@@ -78,12 +104,17 @@ def _dataset_prepare(args: argparse.Namespace) -> int:
 def _dataset_verify(args: argparse.Namespace) -> int:
     registry = load_registry()
     record = registry.get(args.dataset_id)
-    if record.adapter != "fleurs":
-        raise DatasetPreparationError(
-            f"dataset verify is not implemented for adapter {record.adapter!r} in PR E1")
-    from .datasets.fleurs import verify_prepared_fleurs
+    if record.adapter == "fleurs":
+        from .datasets.fleurs import verify_prepared_fleurs
 
-    prepared = verify_prepared_fleurs(record, args.data_root)
+        prepared = verify_prepared_fleurs(record, args.data_root)
+    elif record.adapter == "common_voice":
+        from .datasets.common_voice import verify_prepared_common_voice
+
+        prepared = verify_prepared_common_voice(record, args.data_root)
+    else:
+        raise DatasetPreparationError(
+            f"dataset verify is not implemented for adapter {record.adapter!r}")
     print(f"verified {prepared.dataset_id}: rows={prepared.row_count} "
           f"manifest_sha256={prepared.manifest_sha256}")
     return 0
@@ -197,6 +228,12 @@ def build_parser() -> argparse.ArgumentParser:
         command.add_argument("dataset_id")
         command.add_argument("--data-root", default=str(DEFAULT_DATA_ROOT))
         command.set_defaults(handler=handler)
+    dataset_import = dataset_commands.add_parser(
+        "import", help="import one locally acquired dataset archive")
+    dataset_import.add_argument("dataset_id")
+    dataset_import.add_argument("--archive", required=True)
+    dataset_import.add_argument("--data-root", default=str(DEFAULT_DATA_ROOT))
+    dataset_import.set_defaults(handler=_dataset_import)
 
     license_parser = commands.add_parser("license", help="license policy operations")
     license_commands = license_parser.add_subparsers(dest="license_command", required=True)

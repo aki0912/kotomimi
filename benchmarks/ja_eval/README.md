@@ -2,8 +2,9 @@
 
 This package is the commercial-use evaluation-data boundary for Kotomimi.
 PR E0 provides the registry, schemas, and fail-closed license gate. PR E1 adds
-the pinned FLEURS Japanese adapter, deterministic `minimum-fleurs` suite, basic
-QC, and Hayamimi offline evaluation.
+the pinned FLEURS Japanese adapter and offline evaluation. PR E2 adds the
+Common Voice Japanese 26.0 archive adapter and the 1,300-clip `minimum-strict`
+suite.
 
 Install for development:
 
@@ -44,11 +45,43 @@ rows. Prepared audio is 16 kHz mono PCM-16 FLAC without normalization or
 silence trimming. `reference_raw`, NFC text, and evaluation-normalized text are
 stored independently. QC flags do not remove clips from the official view.
 
+Prepare Common Voice after accepting its terms in Mozilla Data Collective:
+
+```bash
+python -m kotomimi_eval dataset import common_voice_ja_26 \
+  --archive path/to/common-voice-scripted-speech-26-0-japane-2e73a461.tar.gz
+python -m kotomimi_eval dataset prepare common_voice_ja_26
+python -m kotomimi_eval dataset verify common_voice_ja_26
+python -m kotomimi_eval suite build minimum-strict
+python -m kotomimi_eval suite verify minimum-strict
+```
+
+Authenticated API download is optional:
+
+```bash
+python -m pip install -e 'benchmarks/ja_eval[mdc]'
+python -m kotomimi_eval dataset download common_voice_ja_26
+```
+
+Set the credential required by the official client before downloading.
+Archives and extracted audio must remain local and must not
+be re-hosted or reshared. The adapter accepts only the registered
+`cv-corpus-26.0-2026-06-12/ja/test.tsv` and requires exactly 9,020 rows with
+every referenced clip present. It never stores a raw `client_id`; a local,
+uncommitted salt produces an opaque
+speaker grouping ID instead.
+
 `minimum-fleurs` selects 300 clips by stable hash with proportional gender and
 duration strata. It never uses the first 300 rows. Reports record raw and
 normalized CER, S/D/I, exact match, RTF, latency, RSS, model hashes, suite and
 manifest hashes, license provenance, and audit status. A missing ASR model
 causes only model-backed evaluation to exit clearly; registry, preparation,
 suite, and metric tests remain model-free.
+
+`minimum-strict` combines 1,000 Common Voice test clips with 300 FLEURS test
+clips. Common Voice selection is deterministic and proportionally stratified
+by duration, vote margin, sentence domain, age, and gender while spreading
+selected clips across the provided speaker groups. This is an evaluation set;
+neither source test split may be used for model or dictionary training.
 
 See `LICENSE_POLICY.md` and `THIRD_PARTY_DATASETS.md` before acquiring data.

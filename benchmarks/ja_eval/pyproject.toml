@@ -13,6 +13,9 @@ dependencies = [
   "jsonschema>=4.26,<5",
 ]
 
+[project.optional-dependencies]
+mdc = ["datacollective==0.5.7"]
+
 [project.scripts]
 kotomimi-eval = "kotomimi_eval.cli:main"
 

@@ -38,9 +38,15 @@ def extract_tar_safely(
         if len(members) > max_members:
             raise DatasetPreparationError("archive member count exceeds safety limit")
         for member in members:
-            member_path = _safe_member_path(member.name)
             if member.isdir():
+                # POSIX tar writers commonly append a slash to directory names.
+                # Validate the meaningful path without treating that marker as
+                # an empty traversal component.
+                member_path = _safe_member_path(member.name.rstrip("/"))
+                destination_path.joinpath(*member_path.parts).mkdir(
+                    parents=True, exist_ok=True)
                 continue
+            member_path = _safe_member_path(member.name)
             if not member.isfile() or member.issym() or member.islnk():
                 raise DatasetPreparationError(f"archive contains a non-regular member: {member.name!r}")
             total += member.size

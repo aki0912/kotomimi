@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 from kotomimi_eval.cli import main
 
@@ -30,3 +31,29 @@ def test_license_check_sharealike_explicitly_succeeds(capsys):
 def test_license_check_requires_target(capsys):
     assert main(["license", "check"]) == 2
     assert "requires dataset IDs or --all" in capsys.readouterr().err
+
+
+def test_common_voice_import_cli_requires_archive():
+    try:
+        main(["dataset", "import", "common_voice_ja_26"])
+    except SystemExit as exc:
+        assert exc.code == 2
+
+
+def test_common_voice_api_dependency_degrades_clearly(tmp_path, monkeypatch, capsys):
+    import builtins
+
+    real_import = builtins.__import__
+
+    def without_datacollective(name, *args, **kwargs):
+        if name == "datacollective":
+            raise ImportError("fixture")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", without_datacollective)
+    result = main([
+        "dataset", "download", "common_voice_ja_26",
+        "--data-root", str(Path(tmp_path) / "data"),
+    ])
+    assert result == 2
+    assert "optional 'mdc' dependency" in capsys.readouterr().err

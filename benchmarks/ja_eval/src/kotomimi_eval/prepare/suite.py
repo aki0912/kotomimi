@@ -9,7 +9,7 @@ from ..hashing import sha256_file
 from ..licensing.registry import DatasetRegistry
 from ..suites import SuiteRecord, validate_suite_licenses
 from .manifest import load_manifest, write_json_atomic, write_jsonl_atomic
-from .sampling import deterministic_stratified_sample
+from .sampling import deterministic_common_voice_sample, deterministic_stratified_sample
 
 
 def suite_paths(data_root: Path, suite_name: str) -> tuple[Path, Path]:
@@ -46,7 +46,11 @@ def build_suite(
             else:
                 raise DatasetPreparationError(
                     f"suite {suite.name} requests {count} of {dataset_id}, only {len(rows)} exist")
-        chosen = deterministic_stratified_sample(rows, count, suite.seed)
+        if (record.adapter == "common_voice"
+                and selection.get("selection") == "deterministic_stratified_speaker_aware"):
+            chosen = deterministic_common_voice_sample(rows, count, suite.seed)
+        else:
+            chosen = deterministic_stratified_sample(rows, count, suite.seed)
         selected_rows.extend(chosen)
         selected_ids = "\n".join(row["sample_id"] for row in chosen).encode("utf-8")
         dataset_locks[dataset_id] = {
