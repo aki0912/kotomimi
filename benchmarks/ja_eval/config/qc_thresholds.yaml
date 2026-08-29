@@ -16,3 +16,4 @@ audio:
 text:
   very_short_chars: 1
   very_long_chars: 300
+  digit_heavy_ratio: 0.3

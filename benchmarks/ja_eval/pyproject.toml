@@ -7,7 +7,11 @@ name = "kotomimi-ja-eval"
 version = "0.1.0"
 description = "Commercial-use Japanese ASR benchmark tooling"
 requires-python = ">=3.11,<3.12"
-dependencies = ["PyYAML>=6.0,<7"]
+dependencies = [
+  "PyYAML>=6.0,<7",
+  "huggingface_hub>=1.28,<2",
+  "jsonschema>=4.26,<5",
+]
 
 [project.scripts]
 kotomimi-eval = "kotomimi_eval.cli:main"

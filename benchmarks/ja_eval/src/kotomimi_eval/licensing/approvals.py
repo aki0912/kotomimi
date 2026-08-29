@@ -11,9 +11,9 @@ def load_approval(path: str | Path, dataset_id: str) -> dict:
     try:
         approval = json.loads(approval_path.read_text(encoding="utf-8"))
     except FileNotFoundError as exc:
-        raise ApprovalError(f"manual approval missing for {dataset_id}: {approval_path}") from exc
+        raise ApprovalError(f"manual approval file missing for {dataset_id}: {approval_path.name}") from exc
     except (OSError, json.JSONDecodeError) as exc:
-        raise ApprovalError(f"manual approval invalid for {dataset_id}: {exc}") from exc
+        raise ApprovalError(f"manual approval invalid for {dataset_id}: {approval_path.name}: {exc}") from exc
     if not isinstance(approval, dict) or approval.get("schema_version") != 1:
         raise ApprovalError(f"manual approval for {dataset_id} must use schema_version 1")
     if approval.get("dataset_id") != dataset_id:

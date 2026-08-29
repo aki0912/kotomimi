@@ -4,27 +4,34 @@ sources:
     title: Common Voice Scripted Speech 26.0 - Japanese
     creator: Mozilla Foundation / Common Voice contributors
     license: CC0-1.0
+    source_url: https://mozilladatacollective.com/datasets/cmqim4lxy00tunr07cjkcupeg
   fleurs_ja:
     title: FLEURS - Japanese
     creator: Google
     license: CC-BY-4.0
+    source_url: https://huggingface.co/datasets/google/fleurs
   spreds_u1_ja:
     title: SPREDS-U1
     creator: National Institute of Information and Communications Technology
     license: CC-BY-4.0
+    source_url: https://nict.repo.nii.ac.jp/records/2000207
   cpjd:
     title: CPJD Corpus
     creator: Shinnosuke Takamichi and Hiroshi Saruwatari
     license: CC-BY-SA-4.0
+    source_url: https://sites.google.com/site/shinnosuketakamichi/research-topics/cpjd_corpus
   jvnv:
     title: JVNV Corpus
     creator: JVNV contributors
     license: CC-BY-SA-4.0
+    source_url: https://sites.google.com/site/shinnosuketakamichi/research-topics/jvnv_corpus
   jnv:
     title: JNV Corpus
     creator: JNV contributors
     license: CC-BY-SA-4.0
+    source_url: https://sites.google.com/site/shinnosuketakamichi/research-topics/jnv_corpus
   ita_rion:
     title: ITA-Corpus-Rion
     creator: Rion-Dev contributors
     license: CC-BY-4.0
+    source_url: https://github.com/Rion-Dev/ita-corpus-Rion

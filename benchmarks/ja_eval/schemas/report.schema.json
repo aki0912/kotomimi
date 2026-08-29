@@ -29,7 +29,10 @@
       }
     },
     "datasets": {"type": "object"},
+    "data_provenance": {"type": "object"},
     "subsets": {"type": "object"},
+    "qc": {"type": "object"},
+    "artifacts": {"type": "object"},
     "failures": {"type": "array", "items": {"type": "object"}}
   }
 }

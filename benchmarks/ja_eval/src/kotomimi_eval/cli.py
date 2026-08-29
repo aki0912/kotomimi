@@ -3,13 +3,24 @@ from __future__ import annotations
 import argparse
 from dataclasses import asdict
 import json
+import os
 from pathlib import Path
 import sys
 
-from .errors import EvaluationConfigError, LicensePolicyError
+from .errors import (
+    DatasetPreparationError,
+    EvaluationConfigError,
+    LicensePolicyError,
+    ModelEvaluationUnavailable,
+)
 from .licensing.policy import check_dataset_license
 from .licensing.registry import load_registry
-from .paths import APPROVAL_DIR
+from .paths import APPROVAL_DIR, DEFAULT_ARTIFACT_ROOT, DEFAULT_DATA_ROOT
+from .suites import load_suites
+
+
+def _display_path(path: str | Path) -> str:
+    return Path(os.path.relpath(Path(path), Path.cwd())).as_posix()
 
 
 def _dataset_list(args: argparse.Namespace) -> int:
@@ -34,6 +45,47 @@ def _dataset_list(args: argparse.Namespace) -> int:
         for row in rows:
             print(f"{row['dataset_id']}\t{row['policy']}\t{row['spdx']}\t{row['gate']}\t"
                   f"{row['acquisition']}\t{row['display_name']}")
+    return 0
+
+
+def _dataset_download(args: argparse.Namespace) -> int:
+    registry = load_registry()
+    record = registry.get(args.dataset_id)
+    if record.adapter != "fleurs":
+        raise DatasetPreparationError(
+            f"dataset download is not implemented for adapter {record.adapter!r} in PR E1")
+    from .datasets.fleurs import download_fleurs
+
+    receipt = download_fleurs(record, args.data_root)
+    print(f"downloaded {record.dataset_id} revision={receipt['source_revision']}")
+    return 0
+
+
+def _dataset_prepare(args: argparse.Namespace) -> int:
+    registry = load_registry()
+    record = registry.get(args.dataset_id)
+    if record.adapter != "fleurs":
+        raise DatasetPreparationError(
+            f"dataset prepare is not implemented for adapter {record.adapter!r} in PR E1")
+    from .datasets.fleurs import prepare_fleurs
+
+    prepared = prepare_fleurs(record, args.data_root)
+    print(f"prepared {prepared.dataset_id}: rows={prepared.row_count} "
+          f"manifest_sha256={prepared.manifest_sha256}")
+    return 0
+
+
+def _dataset_verify(args: argparse.Namespace) -> int:
+    registry = load_registry()
+    record = registry.get(args.dataset_id)
+    if record.adapter != "fleurs":
+        raise DatasetPreparationError(
+            f"dataset verify is not implemented for adapter {record.adapter!r} in PR E1")
+    from .datasets.fleurs import verify_prepared_fleurs
+
+    prepared = verify_prepared_fleurs(record, args.data_root)
+    print(f"verified {prepared.dataset_id}: rows={prepared.row_count} "
+          f"manifest_sha256={prepared.manifest_sha256}")
     return 0
 
 
@@ -75,6 +127,58 @@ def _license_check(args: argparse.Namespace) -> int:
     return 2 if failed else 0
 
 
+def _suite_build(args: argparse.Namespace) -> int:
+    registry = load_registry()
+    suites = load_suites()
+    try:
+        suite = suites[args.suite]
+    except KeyError as exc:
+        raise EvaluationConfigError(f"unknown suite {args.suite!r}") from exc
+    from .prepare.suite import build_suite
+
+    manifest, lock = build_suite(
+        suite, registry, args.data_root,
+        allow_sharealike=args.allow_sharealike)
+    print(f"built {suite.name}: manifest={_display_path(manifest)} lock={_display_path(lock)}")
+    return 0
+
+
+def _suite_verify(args: argparse.Namespace) -> int:
+    suites = load_suites()
+    try:
+        suite = suites[args.suite]
+    except KeyError as exc:
+        raise EvaluationConfigError(f"unknown suite {args.suite!r}") from exc
+    from .prepare.suite import verify_suite
+
+    lock = verify_suite(suite, args.data_root)
+    print(f"verified {suite.name}: manifest_sha256={lock['manifest_sha256']}")
+    return 0
+
+
+def _evaluate(args: argparse.Namespace) -> int:
+    if args.system != "hayamimi-ja":
+        raise EvaluationConfigError(f"unknown evaluation system {args.system!r}")
+    registry = load_registry()
+    suites = load_suites()
+    try:
+        suite = suites[args.suite]
+    except KeyError as exc:
+        raise EvaluationConfigError(f"unknown suite {args.suite!r}") from exc
+    from .evaluation.runner import evaluate_suite
+
+    report, run_dir = evaluate_suite(
+        suite=suite,
+        registry=registry,
+        data_root=args.data_root,
+        artifact_root=args.artifact_root,
+        threads=args.threads,
+        punctuate=args.punctuate,
+    )
+    print(f"wrote {_display_path(run_dir)}")
+    return 2 if report["failures"] else 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="kotomimi-eval")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -84,6 +188,15 @@ def build_parser() -> argparse.ArgumentParser:
     dataset_list = dataset_commands.add_parser("list", help="list registered datasets")
     dataset_list.add_argument("--json", action="store_true", help="emit JSON")
     dataset_list.set_defaults(handler=_dataset_list)
+    for name, handler in (
+        ("download", _dataset_download),
+        ("prepare", _dataset_prepare),
+        ("verify", _dataset_verify),
+    ):
+        command = dataset_commands.add_parser(name, help=f"{name} one registered dataset")
+        command.add_argument("dataset_id")
+        command.add_argument("--data-root", default=str(DEFAULT_DATA_ROOT))
+        command.set_defaults(handler=handler)
 
     license_parser = commands.add_parser("license", help="license policy operations")
     license_commands = license_parser.add_subparsers(dest="license_command", required=True)
@@ -95,6 +208,29 @@ def build_parser() -> argparse.ArgumentParser:
     check.add_argument("--approval-dir", default=str(APPROVAL_DIR))
     check.add_argument("--json", action="store_true", help="emit JSON")
     check.set_defaults(handler=_license_check)
+
+    suite_parser = commands.add_parser("suite", help="deterministic suite operations")
+    suite_commands = suite_parser.add_subparsers(dest="suite_command", required=True)
+    suite_build = suite_commands.add_parser("build")
+    suite_build.add_argument("suite")
+    suite_build.add_argument("--data-root", default=str(DEFAULT_DATA_ROOT))
+    suite_build.add_argument("--allow-sharealike", action="store_true")
+    suite_build.set_defaults(handler=_suite_build)
+    suite_verify = suite_commands.add_parser("verify")
+    suite_verify.add_argument("suite")
+    suite_verify.add_argument("--data-root", default=str(DEFAULT_DATA_ROOT))
+    suite_verify.set_defaults(handler=_suite_verify)
+
+    evaluate = commands.add_parser("evaluate", help="run an ASR system on a built suite")
+    evaluate.add_argument("--suite", required=True)
+    evaluate.add_argument("--system", default="hayamimi-ja")
+    evaluate.add_argument("--threads", type=int, default=4)
+    evaluate.add_argument("--data-root", default=str(DEFAULT_DATA_ROOT))
+    evaluate.add_argument("--artifact-root", default=str(DEFAULT_ARTIFACT_ROOT))
+    punctuation = evaluate.add_mutually_exclusive_group()
+    punctuation.add_argument("--punctuate", dest="punctuate", action="store_true")
+    punctuation.add_argument("--no-punctuate", dest="punctuate", action="store_false")
+    evaluate.set_defaults(punctuate=False, handler=_evaluate)
     return parser
 
 
@@ -103,6 +239,9 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         return args.handler(args)
-    except EvaluationConfigError as exc:
+    except ModelEvaluationUnavailable as exc:
+        print(f"integration evaluation skipped: {exc}", file=sys.stderr)
+        return 3
+    except (EvaluationConfigError, DatasetPreparationError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2

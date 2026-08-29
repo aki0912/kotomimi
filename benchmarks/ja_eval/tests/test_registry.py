@@ -7,6 +7,7 @@ import yaml
 from kotomimi_eval.errors import EvaluationConfigError
 from kotomimi_eval.hashing import stable_sample_id
 from kotomimi_eval.licensing.registry import load_registry
+from kotomimi_eval.licensing.attribution import attribution_requirement
 
 
 def test_registry_pins_fleurs_revision_split_and_count():
@@ -77,3 +78,11 @@ def test_sample_id_is_stable_and_uses_all_identity_fields():
     assert first == stable_sample_id("fleurs_ja", "rev", "test", "42")
     assert len(first) == 64
     assert first != stable_sample_id("fleurs_ja", "rev", "validation", "42")
+
+
+def test_every_registered_dataset_has_matching_attribution_source():
+    registry = load_registry()
+    for record in registry.datasets.values():
+        attribution = attribution_requirement(record)
+        assert attribution["spdx"] == record.license.spdx
+        assert attribution["source_url"] == record.source_url
