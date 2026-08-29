@@ -126,6 +126,14 @@ SenseVoiceなどをロードしません。起動時に
 `profile=japanese forced_lang=ja lid=disabled preload=rz-only`と表示されれば専用プロファイルです。
 必要なReazonSpeechモデルがなければ他言語モデルへ暗黙にフォールバックせず、明示的に失敗します。
 
+VAD境界へ前後コンテキストを加えるPR 2機能は、現時点では実験フラグです。15件の
+放送音声評価で受け入れ条件へ届かなかったため既定では無効です。試す場合は
+`--mode single --lang ja --ja-overlap`を指定します。暫定値は
+`configs/japanese.default.json`にあり、実測で最良だったpre 0.6秒、post 0.2秒、
+最大overlap 0.3秒、文字列類似度0.82です。無効時は従来の音声窓とfinalイベントを維持します。
+有効時のfinalイベントは既存の`text`を重複除去後の新規部分として維持し、
+`raw_text`（その音声窓の全文）と`merged_context_text`（統合結果）を追加します。
+
 ## CLIリファレンス
 
 フラグはすべて`scripts/realtime_transcribe.py`のものです。
@@ -140,6 +148,13 @@ SenseVoiceなどをロードしません。起動時に
 | `--threads N` | 4 | モデルごとの推論スレッド数 |
 | `--mode {single,balanced,fast}` | balanced | `single`は`--lang`で言語を固定。`single --lang ja`はLIDと他言語ASRをロードしない日本語専用プロファイル |
 | `--lang CODE` | なし | `--mode single`で必須となる固定言語コード（日本語は`ja`） |
+| `--ja-overlap` | オフ | 日本語固定モードで実験的なVAD境界コンテキストと保守的な重複統合を有効化 |
+| `--no-ja-overlap` | オフ | 設定ファイルで有効になっている場合も境界overlapを明示的に無効化 |
+| `--ja-config PATH` | `configs/japanese.default.json` | 日本語プロファイルの暫定パラメータ設定 |
+| `--ja-pre-context SEC` | 設定値 | 評価用にpre-contextを上書き |
+| `--ja-post-context SEC` | 設定値 | 評価用にpost-contextを上書き |
+| `--ja-max-overlap SEC` | 設定値 | 評価用に音声overlap上限を上書き |
+| `--ja-merge-similarity RATIO` | 設定値 | 評価用に文字列統合の類似度閾値を上書き |
 | `--no-partial` | オフ | 発話中の速報字幕を無効化 |
 | `--min-silence SEC` | 0.35 | 発話終了とみなす無音時間。小さいほど確定が速くなるが分割も増える |
 | `--max-speech SEC` | 12.0 | 連続発話がこの秒数を超えたら強制的に確定させる |

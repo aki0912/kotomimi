@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "audio": {
+    "pre_context_s": 0.6,
+    "post_context_s": 0.2,
+    "max_overlap_s": 0.3
+  },
+  "text_merge": {
+    "enabled": false,
+    "min_overlap_chars": 2,
+    "max_overlap_chars": 40,
+    "min_similarity": 0.82
+  }
+}
