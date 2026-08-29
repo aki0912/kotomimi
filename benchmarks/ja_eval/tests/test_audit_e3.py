@@ -52,6 +52,21 @@ def test_audit_sample_is_deterministic_and_idempotent(tmp_path):
     assert repeated_directory == directory
 
 
+def test_clean_audit_uses_exact_clean_qc_view(tmp_path):
+    record, _ = make_prepared_fixture(tmp_path, count=6)
+    report, _ = run_qc(record, tmp_path / "data", tmp_path / "artifacts")
+    clean_count = report["views"]["clean"]["rows"]
+    metadata, _ = create_audit(
+        record, tmp_path / "data", tmp_path / "artifacts",
+        count=clean_count, seed=20260829, view="clean")
+    _, samples, _ = load_audit(tmp_path / "artifacts", metadata["audit_id"])
+    assert metadata["source_view"] == "clean"
+    assert "-clean-" in metadata["audit_id"]
+    assert all(not row["qc"]["flags"] for row in samples)
+    report, _ = write_audit_report(tmp_path / "artifacts", metadata["audit_id"])
+    assert report["source_view"] == "clean"
+
+
 def test_decisions_append_history_and_compute_gate_status(tmp_path):
     _, metadata, _ = _create_fixture_audit(tmp_path, count=2)
     _, samples, _ = load_audit(tmp_path / "artifacts", metadata["audit_id"])

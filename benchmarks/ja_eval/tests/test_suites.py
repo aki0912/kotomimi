@@ -23,3 +23,16 @@ def test_extended_suite_requires_sharealike_opt_in():
 def test_jnv_is_explicitly_nonverbal_not_cer():
     for name in ("minimum-extended", "standard-extended"):
         assert load_suites()[name].datasets["jnv"]["metric_family"] == "nonverbal"
+
+
+def test_policy_profiles_are_explicit_and_never_release_gates():
+    suites = load_suites()
+    expected = {
+        "official-experimental": ("official_regression", "experimental", "official"),
+        "fleurs-clean-candidate": ("clean_candidate", "candidate", "clean"),
+        "quality-stress": ("quality_stress", "experimental", "stress"),
+    }
+    for name, metadata in expected.items():
+        suite = suites[name]
+        assert (suite.purpose, suite.quality_status, suite.evaluation_view) == metadata
+        assert suite.release_gate_eligible is False

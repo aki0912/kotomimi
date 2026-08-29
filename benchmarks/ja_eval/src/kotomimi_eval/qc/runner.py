@@ -294,6 +294,12 @@ def run_qc(
         row for row in official_rows
         if not clean_exclude.intersection(row["qc"].get("flags", []))
     ]
+    stress_rows = [
+        row for row in official_rows
+        if clean_exclude.intersection(row["qc"].get("flags", []))
+    ]
+    if len(clean_rows) + len(stress_rows) != len(official_rows):
+        raise DatasetPreparationError("clean and stress QC views do not partition official")
     if _reference_digest(official_rows) != _reference_digest(
             [row for row in rows if row["sample_id"] not in hard_ids]):
         raise DatasetPreparationError("QC changed reference_raw in the official view")
@@ -305,8 +311,10 @@ def run_qc(
                 / record.version / input_hash[:16])
     official_path = view_dir / "official.manifest.jsonl"
     clean_path = view_dir / "clean.manifest.jsonl"
+    stress_path = view_dir / "stress.manifest.jsonl"
     _, official_hash = write_jsonl_atomic(official_path, official_rows)
     _, clean_hash = write_jsonl_atomic(clean_path, clean_rows)
+    _, stress_hash = write_jsonl_atomic(stress_path, stress_rows)
     flag_counts = Counter(
         flag for row in official_rows for flag in row["qc"].get("flags", []))
     report = {
@@ -328,6 +336,11 @@ def run_qc(
                 "rows": len(clean_rows),
                 "manifest_sha256": clean_hash,
                 "manifest_relative_to_data_root": clean_path.relative_to(data_root_path).as_posix(),
+            },
+            "stress": {
+                "rows": len(stress_rows),
+                "manifest_sha256": stress_hash,
+                "manifest_relative_to_data_root": stress_path.relative_to(data_root_path).as_posix(),
             },
         },
         "hard_failures": hard_failures,

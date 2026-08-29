@@ -5,7 +5,9 @@ def test_markdown_report_states_conditions_and_metrics():
     report = {
         "failures": [],
         "suite": {"name": "minimum-fleurs", "version": 1,
-                  "lock_sha256": "a" * 64, "manifest_sha256": "b" * 64},
+                  "lock_sha256": "a" * 64, "manifest_sha256": "b" * 64,
+                  "purpose": "official_regression", "quality_status": "experimental",
+                  "evaluation_view": "official", "release_gate_eligible": False},
         "system": {"id": "hayamimi-ja", "git_commit": "deadbeef", "punctuate": False},
         "environment": {"threads": 4, "platform": "test-platform"},
         "qc": {"view": "official"},

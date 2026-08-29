@@ -59,7 +59,7 @@
     "very_quiet": 222,
     "very_short_text": 28
   },
-  "generated_at": "2026-08-29T21:16:33.224333+00:00",
+  "generated_at": "2026-08-29T23:28:16.060432+00:00",
   "hard_failures": [],
   "input_manifest_sha256": "0497e82fbb3d4a82f2876108cfbad9c850a16a98b803ef2924c6b2b25996b19e",
   "input_rows": 9020,
@@ -81,6 +81,11 @@
       "manifest_relative_to_data_root": "manifests/qc/common_voice_ja_26/26.0/0497e82fbb3d4a82/official.manifest.jsonl",
       "manifest_sha256": "71ca626b2d041e6c142301efc7c159587e8ffa5dddc962db3c72dd1cff4ca504",
       "rows": 9020
+    },
+    "stress": {
+      "manifest_relative_to_data_root": "manifests/qc/common_voice_ja_26/26.0/0497e82fbb3d4a82/stress.manifest.jsonl",
+      "manifest_sha256": "6f945ec4fc82e1a0232b1aab29b6effd8ac6e907e4655f8d1c2fb2f8cfdcc4a4",
+      "rows": 3381
     }
   }
 }

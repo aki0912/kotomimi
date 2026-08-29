@@ -182,6 +182,7 @@ def _qc_run(args: argparse.Namespace) -> int:
     report, report_dir = run_qc(record, args.data_root, args.artifact_root)
     print(f"QC {record.dataset_id}: official={report['views']['official']['rows']} "
           f"clean={report['views']['clean']['rows']} "
+          f"stress={report['views']['stress']['rows']} "
           f"hard_failures={len(report['hard_failures'])} "
           f"report={_display_path(report_dir)}")
     return 2 if report["hard_failures"] else 0
@@ -193,7 +194,8 @@ def _audit_create(args: argparse.Namespace) -> int:
     from .audit.workflow import create_audit
 
     metadata, directory = create_audit(
-        record, args.data_root, args.artifact_root, count=args.count, seed=args.seed)
+        record, args.data_root, args.artifact_root,
+        count=args.count, seed=args.seed, view=args.view)
     print(f"created audit {metadata['audit_id']}: samples={metadata['count']} "
           f"directory={_display_path(directory)}")
     return 0
@@ -331,7 +333,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     qc_parser = commands.add_parser("qc", help="model-independent quality control")
     qc_commands = qc_parser.add_subparsers(dest="qc_command", required=True)
-    qc_run = qc_commands.add_parser("run", help="build official and clean QC views")
+    qc_run = qc_commands.add_parser("run", help="build official, clean, and stress QC views")
     qc_run.add_argument("--dataset", dest="dataset_id", required=True)
     qc_run.add_argument("--data-root", default=str(DEFAULT_DATA_ROOT))
     qc_run.add_argument("--artifact-root", default=str(DEFAULT_ARTIFACT_ROOT))
@@ -343,6 +345,7 @@ def build_parser() -> argparse.ArgumentParser:
     audit_create.add_argument("--dataset", dest="dataset_id", required=True)
     audit_create.add_argument("--count", type=int, required=True)
     audit_create.add_argument("--seed", type=int, default=20260829)
+    audit_create.add_argument("--view", choices=("official", "clean"), default="official")
     audit_create.add_argument("--data-root", default=str(DEFAULT_DATA_ROOT))
     audit_create.add_argument("--artifact-root", default=str(DEFAULT_ARTIFACT_ROOT))
     audit_create.set_defaults(handler=_audit_create)

@@ -96,12 +96,34 @@ python -m kotomimi_eval audit create \
 python -m kotomimi_eval audit serve --latest
 ```
 
-QC never overwrites a prepared manifest. The official view keeps every
-evaluable clip, while clean is a secondary subset based only on configured QC
-flags. Reports state that speech activity is estimated with 20 ms frame RMS,
-not model VAD. They must not be described as VAD measurements. Audit decisions
-are appended and synced after every POST. The server rejects non-loopback bind
-addresses; its default URL is `http://127.0.0.1:8765/`.
+QC never overwrites a prepared manifest. It produces three policy views:
+official keeps every evaluable clip; clean keeps only clips accepted by the
+fixed pre-ASR QC flags; and stress is the excluded complement. Clean and stress
+are a disjoint, complete partition of official. Stress is diagnostic and must
+not be presented as representative accuracy. Clean is only a candidate until
+that exact view receives a separate human audit. No view is selected from ASR
+hypotheses or error scores.
+
+Build the corresponding evaluation profiles after QC:
+
+```bash
+python -m kotomimi_eval suite build official-experimental
+python -m kotomimi_eval suite build fleurs-clean-candidate
+python -m kotomimi_eval suite build quality-stress
+```
+
+Create a separate audit for the exact clean FLEURS candidate:
+
+```bash
+python -m kotomimi_eval audit create \
+  --dataset fleurs_ja --view clean --count 204 --seed 20260829
+```
+
+All three profiles are explicitly ineligible for release gating. Reports state
+that speech activity is estimated with 20 ms frame RMS, not model VAD. They
+must not be described as VAD measurements. Audit decisions are appended and
+synced after every POST. The server rejects non-loopback bind addresses; its
+default URL is `http://127.0.0.1:8765/`.
 
 Use `python -m kotomimi_eval audit status --latest` to inspect completion and
 the initial quality gate. `audit report --latest` writes a privacy-safe aggregate

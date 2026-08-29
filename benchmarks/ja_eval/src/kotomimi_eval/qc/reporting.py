@@ -12,6 +12,7 @@ def render_qc_markdown(report: dict) -> str:
         f"- Input rows: {report['input_rows']}",
         f"- Official rows: {report['views']['official']['rows']}",
         f"- Clean rows: {report['views']['clean']['rows']}",
+        f"- Stress rows: {report['views']['stress']['rows']}",
         f"- Hard failures: {len(report['hard_failures'])}",
         f"- Speech activity method: `{report['speech_activity']['method']}`",
         f"- Speech frame: {report['speech_activity']['frame_ms']} ms",
@@ -69,7 +70,8 @@ table{{border-collapse:collapse;width:100%;margin:1rem 0}}th,td{{border:1px soli
 <p class="notice">Official retains every evaluable row. Clean is a secondary QC subset only.
 No ASR hypothesis is used for exclusion.</p>
 <ul><li>Input: {report['input_rows']}</li><li>Official: {report['views']['official']['rows']}</li>
-<li>Clean: {report['views']['clean']['rows']}</li><li>Hard failures: {len(report['hard_failures'])}</li>
+<li>Clean: {report['views']['clean']['rows']}</li><li>Stress: {report['views']['stress']['rows']}</li>
+<li>Hard failures: {len(report['hard_failures'])}</li>
 <li>Speech activity: <code>{escape(report['speech_activity']['method'])}</code>,
 {report['speech_activity']['frame_ms']} ms frames at {report['speech_activity']['threshold_dbfs']} dBFS</li></ul>
 <h2>Flags</h2><table><thead><tr><th>Flag</th><th>Count</th><th>Clean exclusion</th></tr></thead>

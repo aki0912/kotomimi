@@ -8,11 +8,15 @@ def _percent(value: float) -> str:
 def render_report_markdown(report: dict) -> str:
     metrics = report["metrics"]
     status = "PASS" if not report["failures"] else "FAIL"
+    gate = "ELIGIBLE" if report["suite"]["release_gate_eligible"] else "NOT ELIGIBLE"
     lines = [
         "# Kotomimi Japanese ASR Evaluation",
         "",
-        f"- Status: **{status}**",
+        f"- Execution: **{status}**",
+        f"- Release gate: **{gate}**",
         f"- Suite: `{report['suite']['name']}` v{report['suite']['version']}",
+        f"- Purpose: `{report['suite']['purpose']}`",
+        f"- Quality status: `{report['suite']['quality_status']}`",
         f"- System: `{report['system']['id']}`",
         f"- Git commit: `{report['system']['git_commit']}`",
         f"- Git worktree dirty: `{str(report['system'].get('git_dirty', False)).lower()}`",
@@ -42,12 +46,12 @@ def render_report_markdown(report: dict) -> str:
             f"{_percent(item['raw']['cer'])} | {item['normalized']['substitutions']} / "
             f"{item['normalized']['deletions']} / {item['normalized']['insertions']} |")
     lines.extend(["", "## Dataset provenance", "",
-                  "| dataset | version / revision | split | license / policy | selected | audit |",
-                  "|---|---|---|---|---:|---|"])
+                  "| dataset | version / revision | split | view | license / policy | selected | audit |",
+                  "|---|---|---|---|---|---:|---|"])
     for name, item in report.get("data_provenance", {}).items():
         revision = item.get("source_revision") or item["version"]
         lines.append(
-            f"| {name} | `{revision}` | {item['source_split']} | "
+            f"| {name} | `{revision}` | {item['source_split']} | {item.get('source_view', 'prepared')} | "
             f"{item['license_spdx']} / {item['license_policy']} | "
             f"{item['selected_count']} | {item['audit_status']} |")
     lines.extend(["", "## Attribution", ""])
@@ -57,6 +61,15 @@ def render_report_markdown(report: dict) -> str:
             lines.append(
                 f"- {attribution['title']} — {attribution['creator']}; "
                 f"{attribution['spdx']}; {attribution['source_url']}")
+    view = report["qc"]["view"]
+    if view == "official":
+        view_note = "Official retains every evaluable clip and is experimental, not a release gate."
+    elif view == "clean":
+        view_note = "Clean is selected only by pre-ASR QC rules and remains a candidate until re-audited."
+    elif view == "stress":
+        view_note = "Stress contains QC-excluded clips and must not be presented as representative accuracy."
+    else:
+        view_note = "Functional results verify execution only and are not accuracy claims."
     lines.extend([
         "",
         "## Reproducibility",
@@ -66,7 +79,7 @@ def render_report_markdown(report: dict) -> str:
         f"- Threads: {report['environment']['threads']}",
         f"- Platform: {report['environment']['platform']}",
         "",
-        "This report uses the official view. QC flags are reported but are not used to remove clips.",
+        view_note,
         "Peak RSS is process-wide and includes the loaded ASR model.",
         "",
     ])

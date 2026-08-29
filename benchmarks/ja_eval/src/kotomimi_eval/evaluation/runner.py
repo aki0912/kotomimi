@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import json
 import os
 import platform
 from pathlib import Path
@@ -43,6 +44,24 @@ def _peak_rss_bytes(process: psutil.Process) -> int:
         return value if sys.platform == "darwin" else value * 1024
     except (ImportError, OSError, ValueError):
         return process.memory_info().rss
+
+
+def _audit_status(
+    artifact_root: Path, dataset_id: str, version: str, source_view: str,
+) -> str:
+    candidates = []
+    for path in (artifact_root / "audit_reports").glob("*/audit-report.json"):
+        try:
+            report = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        report_view = report.get("source_view", "official")
+        expected_view = "official" if source_view == "prepared" else source_view
+        if (report.get("dataset_id") == dataset_id
+                and report.get("dataset_version") == version
+                and report_view == expected_view):
+            candidates.append((str(report.get("generated_at", "")), report.get("dataset_status")))
+    return max(candidates)[1] if candidates else "not-run"
 
 
 def evaluate_suite(
@@ -143,9 +162,15 @@ def evaluate_suite(
             "license_spdx": record.license.spdx,
             "license_policy": record.license.policy,
             "prepared_lock_sha256": sha256_file(prepared_lock),
-            "prepared_manifest_sha256": dataset_lock["manifest_sha256"],
+            "prepared_manifest_sha256": dataset_lock.get(
+                "prepared_manifest_sha256", dataset_lock["manifest_sha256"]),
+            "source_manifest_sha256": dataset_lock.get(
+                "source_manifest_sha256", dataset_lock["manifest_sha256"]),
             "selected_count": dataset_lock["selected_count"],
-            "audit_status": "not-run",
+            "source_view": dataset_lock.get("source_view", "prepared"),
+            "audit_status": _audit_status(
+                artifact_root_path, dataset_id, record.version,
+                dataset_lock.get("source_view", "prepared")),
             "attribution": attribution_requirement(record),
         }
     run_id = f"{timestamp.strftime('%Y%m%dT%H%M%SZ')}-hayamimi-ja-{commit[:8]}"
@@ -159,6 +184,10 @@ def evaluate_suite(
         "suite": {
             "name": suite.name,
             "version": suite.version,
+            "purpose": suite.purpose,
+            "quality_status": suite.quality_status,
+            "evaluation_view": suite.evaluation_view,
+            "release_gate_eligible": suite.release_gate_eligible,
             "lock_sha256": sha256_file(suite_lock),
             "manifest_sha256": lock["manifest_sha256"],
         },
@@ -201,7 +230,8 @@ def evaluate_suite(
             "latin": by_latin,
             "qc": by_qc,
         },
-        "qc": {"view": "official", "flagged_samples": sum(bool(row["qc_flags"]) for row in scored_rows)},
+        "qc": {"view": suite.evaluation_view,
+               "flagged_samples": sum(bool(row["qc_flags"]) for row in scored_rows)},
         "artifacts": {"hypotheses_sha256": hypotheses_hash},
         "failures": [
             {"sample_id": row["sample_id"], "error": row["failure"]}

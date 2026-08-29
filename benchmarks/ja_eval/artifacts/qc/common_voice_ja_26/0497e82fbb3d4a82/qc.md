@@ -5,6 +5,7 @@
 - Input rows: 9020
 - Official rows: 9020
 - Clean rows: 5639
+- Stress rows: 3381
 - Hard failures: 0
 - Speech activity method: `20ms-frame-rms>=configured-dbfs`
 - Speech frame: 20 ms

@@ -80,16 +80,24 @@ def test_qc_builds_official_and_clean_without_changing_raw_reference(tmp_path):
     report, report_dir = run_qc(record, tmp_path / "data", tmp_path / "artifacts")
     official_path = tmp_path / "data" / report["views"]["official"]["manifest_relative_to_data_root"]
     clean_path = tmp_path / "data" / report["views"]["clean"]["manifest_relative_to_data_root"]
+    stress_path = tmp_path / "data" / report["views"]["stress"]["manifest_relative_to_data_root"]
     official = load_manifest(official_path)
-    assert load_manifest(clean_path)
+    clean = load_manifest(clean_path)
+    stress = load_manifest(stress_path)
+    assert clean
     assert [row["reference_raw"] for row in official] == [
         row["reference_raw"] for row in source_rows
     ]
     source_reference = {row["sample_id"]: row["reference_raw"] for row in source_rows}
     assert all(row["reference_raw"] == source_reference[row["sample_id"]]
-               for row in load_manifest(clean_path))
+               for row in clean + stress)
     assert report["views"]["official"]["rows"] == 6
     assert report["views"]["clean"]["rows"] < 6
+    assert report["views"]["clean"]["rows"] + report["views"]["stress"]["rows"] == 6
+    assert {row["sample_id"] for row in clean}.isdisjoint(
+        row["sample_id"] for row in stress)
+    assert all(not row["qc"]["flags"] for row in clean)
+    assert all(row["qc"]["flags"] for row in stress)
     assert "long_leading_silence" in official[0]["qc"]["flags"]
     assert report["duplicates"]["raw_text"]["groups"] == 1
     assert not report["hard_failures"]

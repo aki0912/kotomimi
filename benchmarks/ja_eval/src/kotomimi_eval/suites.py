@@ -18,6 +18,10 @@ class SuiteRecord:
     seed: int
     allowed_policies: tuple[str, ...]
     datasets: dict[str, dict[str, Any]]
+    purpose: str = "unclassified"
+    quality_status: str = "unclassified"
+    evaluation_view: str = "unclassified"
+    release_gate_eligible: bool = False
     requires_sharealike_opt_in: bool = False
 
 
@@ -35,12 +39,21 @@ def load_suites(path: str | Path | None = None) -> dict[str, SuiteRecord]:
             raise EvaluationConfigError(f"suite {name} must declare allowed_policies")
         if not isinstance(raw.get("version"), int) or not isinstance(raw.get("seed"), int):
             raise EvaluationConfigError(f"suite {name} requires integer version and seed")
+        for field_name in ("purpose", "quality_status", "evaluation_view"):
+            if not isinstance(raw.get(field_name), str) or not raw[field_name]:
+                raise EvaluationConfigError(f"suite {name} requires {field_name}")
+        if not isinstance(raw.get("release_gate_eligible"), bool):
+            raise EvaluationConfigError(f"suite {name} requires boolean release_gate_eligible")
         suites[name] = SuiteRecord(
             name=name,
             version=raw["version"],
             seed=raw["seed"],
             allowed_policies=tuple(allowed),
             datasets=dict(raw["datasets"]),
+            purpose=raw["purpose"],
+            quality_status=raw["quality_status"],
+            evaluation_view=raw["evaluation_view"],
+            release_gate_eligible=raw["release_gate_eligible"],
             requires_sharealike_opt_in=bool(raw.get("requires_sharealike_opt_in", False)),
         )
     return suites

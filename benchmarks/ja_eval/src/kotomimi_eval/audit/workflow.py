@@ -99,9 +99,11 @@ def deterministic_audit_sample(
     return sorted(selected, key=lambda row: stable_score(seed, row["sample_id"]))
 
 
-def _load_qc_official_manifest(
-    record: DatasetRecord, data_root: Path, artifact_root: Path,
+def _load_qc_manifest(
+    record: DatasetRecord, data_root: Path, artifact_root: Path, view: str,
 ) -> tuple[Path, dict]:
+    if view not in {"official", "clean"}:
+        raise EvaluationConfigError("audit view must be official or clean")
     prepared_manifest = (data_root / "prepared" / record.dataset_id / record.version
                          / "manifest.jsonl")
     input_hash = sha256_file(prepared_manifest)
@@ -114,14 +116,14 @@ def _load_qc_official_manifest(
     if (report.get("input_manifest_sha256") != input_hash
             or report.get("hard_failures")):
         raise DatasetPreparationError("QC report is stale or contains hard failures")
-    relative = report["views"]["official"]["manifest_relative_to_data_root"]
+    relative = report["views"][view]["manifest_relative_to_data_root"]
     try:
         parts = safe_relative_parts(relative)
     except ValueError:
         raise DatasetPreparationError("QC report contains an unsafe manifest path")
     manifest = data_root.joinpath(*parts)
-    if sha256_file(manifest) != report["views"]["official"]["manifest_sha256"]:
-        raise DatasetPreparationError("QC official manifest hash does not match report")
+    if sha256_file(manifest) != report["views"][view]["manifest_sha256"]:
+        raise DatasetPreparationError(f"QC {view} manifest hash does not match report")
     return manifest, report
 
 
@@ -132,16 +134,19 @@ def create_audit(
     *,
     count: int,
     seed: int,
+    view: str = "official",
 ) -> tuple[dict, Path]:
     check_dataset_license(record)
     data_root_path = Path(data_root)
     artifact_root_path = Path(artifact_root)
-    manifest_path, qc_report = _load_qc_official_manifest(
-        record, data_root_path, artifact_root_path)
+    manifest_path, qc_report = _load_qc_manifest(
+        record, data_root_path, artifact_root_path, view)
     rows = load_manifest(manifest_path)
     selected = deterministic_audit_sample(record, rows, count, seed)
     selected_ids = "\n".join(row["sample_id"] for row in selected).encode("ascii")
-    audit_id = f"{record.dataset_id}-{seed}-{count}-{qc_report['input_manifest_sha256'][:12]}"
+    view_part = "" if view == "official" else f"-{view}"
+    audit_id = (f"{record.dataset_id}{view_part}-{seed}-{count}-"
+                f"{qc_report['input_manifest_sha256'][:12]}")
     directory = audit_directory(artifact_root_path, audit_id)
     metadata_path = directory / "audit.json"
     samples_path = directory / "samples.jsonl"
@@ -150,15 +155,22 @@ def create_audit(
             existing = json.loads(metadata_path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
             raise DatasetPreparationError("existing audit metadata is invalid") from exc
-        identity = ("dataset_id", "dataset_version", "count", "seed", "source_manifest_sha256")
+        identity = (
+            "dataset_id", "dataset_version", "count", "seed", "source_view",
+            "source_manifest_sha256",
+        )
         proposed = {
             "dataset_id": record.dataset_id,
             "dataset_version": record.version,
             "count": count,
             "seed": seed,
-            "source_manifest_sha256": qc_report["views"]["official"]["manifest_sha256"],
+            "source_view": view,
+            "source_manifest_sha256": qc_report["views"][view]["manifest_sha256"],
         }
-        if any(existing.get(key) != proposed[key] for key in identity):
+        if any(
+            existing.get(key, "official" if key == "source_view" else None) != proposed[key]
+            for key in identity
+        ):
             raise DatasetPreparationError("refusing to overwrite a different audit")
         if (not samples_path.is_file()
                 or existing.get("samples_sha256") != sha256_file(samples_path)):
@@ -173,7 +185,8 @@ def create_audit(
         "count": row_count,
         "seed": seed,
         "created_at": datetime.now(timezone.utc).isoformat(),
-        "source_manifest_sha256": qc_report["views"]["official"]["manifest_sha256"],
+        "source_view": view,
+        "source_manifest_sha256": qc_report["views"][view]["manifest_sha256"],
         "samples_sha256": samples_hash,
         "selected_ids_sha256": hashlib.sha256(selected_ids).hexdigest(),
         "speaker_metadata": (
@@ -285,6 +298,7 @@ def load_audit_status(artifact_root: str | Path, audit_id: str) -> dict:
         "schema_version": 1,
         "audit_id": audit_id,
         "dataset_id": metadata["dataset_id"],
+        "source_view": metadata.get("source_view", "official"),
         "total": total,
         "reviewed": reviewed,
         "remaining": total - reviewed,
@@ -317,6 +331,7 @@ def write_audit_report(artifact_root: str | Path, audit_id: str) -> tuple[dict, 
         "audit_id": audit_id,
         "dataset_id": metadata["dataset_id"],
         "dataset_version": metadata["dataset_version"],
+        "source_view": metadata.get("source_view", "official"),
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "source_manifest_sha256": metadata["source_manifest_sha256"],
         "samples_sha256": metadata["samples_sha256"],
@@ -351,6 +366,7 @@ def write_audit_report(artifact_root: str | Path, audit_id: str) -> tuple[dict, 
 
 - Dataset: `{report['dataset_id']}`
 - Version: `{report['dataset_version']}`
+- Source view: `{report['source_view']}`
 - Status: **{report['dataset_status']}**
 - Reviewed: {report['reviewed_count']} / {report['sample_count']}
 - Severe issue rate: {report['severe_issue_rate']:.1%} (maximum 5.0%)
