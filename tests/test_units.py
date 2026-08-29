@@ -342,7 +342,7 @@ def test_partial_forced_lang_routes_directly_without_lid_or_sv_probe():
         forced_lang = "ko"
         last_lang = "en"  # deliberately different, to prove it's ignored
 
-        def _route(self, lang):
+        def _route_forced(self, lang):
             assert lang == "ko"
             return ("ko-recognizer", "sv")
 

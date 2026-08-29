@@ -401,9 +401,11 @@ class Refiner:
         into a "[refine/ja] ..." line. Refine groups now never cross a
         language boundary.
         """
-        corrected = script_corrected_lang(lang, text)
+        forced_lang = getattr(getattr(self, "asr", None), "forced_lang", None)
+        corrected = forced_lang or script_corrected_lang(lang, text)
         if self.spans:
-            group_lang = script_corrected_lang(self.spans[-1][2], self.spans[-1][3])
+            group_lang = (forced_lang
+                          or script_corrected_lang(self.spans[-1][2], self.spans[-1][3]))
             if corrected != group_lang:
                 # flush the previous group off the hot path; it belongs to
                 # a different language and must not accumulate this span
@@ -433,6 +435,13 @@ class Refiner:
         # ALL-CAPS "ja" span was misdetected English).
         langs = [script_corrected_lang(lang, text)
                  for _, _, lang, text, _ in self.spans]
+        forced_lang = getattr(self.asr, "forced_lang", None)
+        if forced_lang is not None:
+            # A fixed profile must stay fixed even when script heuristics
+            # disagree (for example, Japanese speech containing an ASCII
+            # product name). Otherwise refine could probe SenseVoice and
+            # defeat the Japanese-only model boundary.
+            langs = [forced_lang] * len(langs)
         lang = max(set(langs), key=langs.count)
         # a genuinely mixed-language group must not be re-decoded in one
         # language: the per-segment finals already used the right model per
@@ -473,7 +482,11 @@ class Refiner:
                 # and resolve_refine_lang additionally gates on the
                 # group's total duration (see REFINE_MIN_REGROUP_S).
                 group_duration_s = len(buf) / self.sr
-                detected = self.asr._identify_lang(buf, self.sr)
+                # --mode single has no LID model by design. Refine the merged
+                # group in the configured language without trying to
+                # reconsider routing.
+                detected = (forced_lang if forced_lang is not None
+                            else self.asr._identify_lang(buf, self.sr))
                 sv_lang = ""
                 probe_text = None
                 if detected != lang and group_duration_s >= REFINE_MIN_REGROUP_S:
@@ -624,6 +637,13 @@ def run_stream(chunks, vad, sample_rate: int, asr: RoutedASR, stats: SessionStat
             refiner.maybe_refine(int(audio_pos * sample_rate))
 
 
+def startup_profile(mode: str, lang: str | None) -> str | None:
+    """Return the one-line startup profile description, when applicable."""
+    if mode == "single" and lang == "ja":
+        return "profile=japanese forced_lang=ja lid=disabled preload=rz-only"
+    return None
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--wav", help="wav file to simulate streaming from (16kHz mono s16)")
@@ -712,7 +732,11 @@ def main():
               file=sys.stderr)
 
     print("loading models...", file=sys.stderr)
+    profile = startup_profile(args.mode, args.lang)
+    if profile is not None:
+        print(profile, file=sys.stderr)
     asr = RoutedASR(threads=args.threads,
+                    preload=(args.mode != "single"),
                     max_resident=args.max_resident if args.max_resident > 0 else None,
                     hotwords_file=args.hotwords, replace_file=args.replace,
                     lid_switch_confirm=max(args.lid_switch_confirm, 1),

@@ -106,6 +106,26 @@ python -m venv .venv
 `--minimal`を付けると日本語と英語だけの約1.1GB構成になります。
 各モデルのライセンスは`THIRD_PARTY_NOTICES.md`にまとめてあります。
 
+日本語だけをリアルタイム認識する場合は、LID・他言語ASR・翻訳・話者モデルを含まない
+約850MBの専用セットを選べます。既存の`--minimal`の意味は変わりません。
+容量は2026-08-29時点のReazonSpeech、Silero VAD、fp32句読点モデルの配布ファイルを
+展開した論理サイズ合計851.1MB（10進）を丸めた値で、ファイルシステム上の使用量は異なります。
+
+```bash
+# Windows
+.venv\Scripts\python scripts\download_models.py --japanese-only
+.venv\Scripts\python scripts\realtime_transcribe.py --mode single --lang ja
+
+# macOS / Linux
+.venv/bin/python scripts/download_models.py --japanese-only
+.venv/bin/python scripts/realtime_transcribe.py --mode single --lang ja
+```
+
+この起動方法ではReazonSpeechだけをASRとして構築・warmupし、whisper-tiny LIDや
+SenseVoiceなどをロードしません。起動時に
+`profile=japanese forced_lang=ja lid=disabled preload=rz-only`と表示されれば専用プロファイルです。
+必要なReazonSpeechモデルがなければ他言語モデルへ暗黙にフォールバックせず、明示的に失敗します。
+
 ## CLIリファレンス
 
 フラグはすべて`scripts/realtime_transcribe.py`のものです。
@@ -118,6 +138,8 @@ python -m venv .venv
 | `--ws-host HOST` | `0.0.0.0` | `--input ws`の`/ingest`エンドポイントのバインドホスト |
 | `--ws-port PORT` | 8766 | `--input ws`の`/ingest`エンドポイントのポート |
 | `--threads N` | 4 | モデルごとの推論スレッド数 |
+| `--mode {single,balanced,fast}` | balanced | `single`は`--lang`で言語を固定。`single --lang ja`はLIDと他言語ASRをロードしない日本語専用プロファイル |
+| `--lang CODE` | なし | `--mode single`で必須となる固定言語コード（日本語は`ja`） |
 | `--no-partial` | オフ | 発話中の速報字幕を無効化 |
 | `--min-silence SEC` | 0.35 | 発話終了とみなす無音時間。小さいほど確定が速くなるが分割も増える |
 | `--max-speech SEC` | 12.0 | 連続発話がこの秒数を超えたら強制的に確定させる |
@@ -133,6 +155,9 @@ python -m venv .venv
 | `--translate [LANGS]` | オフ、`en` | 日本語行をカンマ区切りの言語に翻訳。`en`は専用のFuguMTモジュール、それ以外（`zh`/`ko`/`es`/`fr`など）はモデルの語彙が対応していれば受け付ける。`zh`/`ko`/`es`以外は品質未実測の旨をnoteで表示、詳細はdocs/TRANSLATE_M2M.md |
 
 ## アーキテクチャ
+
+以下は既定の`balanced`/`fast`モードです。`--mode single --lang ja`では
+whisper-tiny言語判定と多言語分岐を通らず、ReazonSpeechへ直接ルーティングします。
 
 ```
                           ┌─────────────┐
