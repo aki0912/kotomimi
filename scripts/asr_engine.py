@@ -517,14 +517,21 @@ class RoutedASR:
         self._pending_lang = None   # candidate new language awaiting confirmation
         self._pending_count = 0
         self.lid_switch_confirm = lid_switch_confirm  # consecutive detections to accept a switch
-        self.lid = _build_lid(threads)
+        # A fixed-language profile has no routing decision to make. Avoid
+        # constructing whisper-tiny entirely so --mode single can run from a
+        # language-only model set (not merely avoid calling an already-loaded
+        # LID model).
+        self.lid = None if forced_lang is not None else _build_lid(threads)
         if warmup:
-            # LID + tier-0 pay their one-time kernel/allocation costs here
-            # so the first real segment isn't penalized.
+            # Fixed-language mode warms only its exact route. Balanced/fast
+            # retain the existing LID + tier-0 warmup behavior.
             silence = np.zeros(16000, dtype=np.float32)
-            self._identify_lang(silence, 16000)
-            self._decode(self._get("rz"), silence, 16000)
-        if preload:
+            if self.forced_lang is not None:
+                self._decode(self._route_forced(self.forced_lang)[0], silence, 16000)
+            else:
+                self._identify_lang(silence, 16000)
+                self._decode(self._get("rz"), silence, 16000)
+        if preload and self.forced_lang is None:
             # pull the other tiers in on a daemon thread so the first
             # non-tier-0 utterance doesn't pay the ~2s model-load cost.
             threading.Thread(target=self._preload_rest, daemon=True).start()
@@ -586,7 +593,9 @@ class RoutedASR:
 
                         self._punct = PunctuatorJa()
                     except Exception:
-                        self._punctuate = False  # missing model/deps: degrade quietly
+                        self._punctuate = False
+                        print("[hayamimi] Japanese punctuation unavailable; "
+                              "continuing without punctuation", file=sys.stderr)
         return self._punct
 
     @property
@@ -611,7 +620,7 @@ class RoutedASR:
         if name not in self._models and not _model_present(name):
             self._unavailable.add(name)
             print(f"[hayamimi] model '{name}' not found under models/ "
-                  f"(minimal install?): routing falls back", file=sys.stderr)
+                  f"(minimal install?): model tier unavailable", file=sys.stderr)
             raise ModelUnavailable(name)
         rec = self._models.get(name)
         if rec is None:
@@ -628,7 +637,7 @@ class RoutedASR:
                         # a --minimal install ships only some models: degrade
                         self._unavailable.add(name)
                         print(f"[hayamimi] model '{name}' unavailable "
-                              f"(minimal install?): routing falls back",
+                              f"(minimal install?): model tier unavailable",
                               file=sys.stderr)
                         raise ModelUnavailable(name) from exc
                     with self._load_lock:
@@ -660,6 +669,8 @@ class RoutedASR:
         return sorted(self._models)
 
     def _identify_lang(self, samples: np.ndarray, sample_rate: int) -> str:
+        if self.lid is None:
+            raise RuntimeError("language identification is disabled for fixed-language mode")
         clip = samples
         # skip the leading quiet (preroll padding): it eats into the 4s LID
         # window and cost the demo capture its first-utterance language
@@ -729,6 +740,21 @@ class RoutedASR:
             return self._get_with_fallback("v3")
         return self._get_with_fallback("omni")
 
+    def _route_forced(self, lang: str) -> tuple[object, str]:
+        """Route a fixed language without LID.
+
+        The PR 1 Japanese profile has a strict Reazon-only boundary. Other
+        pre-existing fixed-language profiles retain their fallback behavior.
+        """
+        if lang == "ja":
+            try:
+                return self._get("rz"), "rz"
+            except ModelUnavailable as exc:
+                raise RuntimeError(
+                    "Japanese profile requires ReazonSpeech; run "
+                    "scripts/download_models.py --japanese-only") from exc
+        return self._route(lang)
+
     def partial(self, samples: np.ndarray, sample_rate: int,
                 lang_hint: str | None = None) -> str:
         """Fast draft transcription of an in-progress utterance.
@@ -745,7 +771,7 @@ class RoutedASR:
         transcribe(), with no LID/SenseVoice probing at all.
         """
         if self.forced_lang is not None:
-            rec, _ = self._route(self.forced_lang)
+            rec, _ = self._route_forced(self.forced_lang)
             return self._replace(self._decode(rec, samples, sample_rate))
 
         if lang_hint is not None:
@@ -897,7 +923,7 @@ class RoutedASR:
         if self.forced_lang is not None:
             # --mode single: route straight to the forced language, no
             # zh/yue arbitration and no script-based re-decode below.
-            rec, tier = self._route(lang)
+            rec, tier = self._route_forced(lang)
             text = self._decode(rec, samples, sample_rate)
         elif lang == "zh":
             # whisper-tiny LID labels Cantonese as "zh" (measured 0/12 correct
@@ -928,7 +954,8 @@ class RoutedASR:
         else:
             rec, tier = self._route(lang)
             text = self._decode(rec, samples, sample_rate)
-        if not text.strip() and tier != "omni" and not suppress_fallback:
+        if (self.forced_lang != "ja" and not text.strip()
+                and tier != "omni" and not suppress_fallback):
             # safety net: the specialist came back empty (likely LID mistake);
             # the 1600-language generalist gets the last word.
             text = self._decode(self._get("omni"), samples, sample_rate)

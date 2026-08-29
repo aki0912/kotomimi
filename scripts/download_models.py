@@ -4,7 +4,9 @@
 Idempotent: any model whose target already exists is skipped, so re-running
 this after an interrupted download only fetches what's missing.
 
-Two model sets:
+Three model sets:
+  --japanese-only  Japanese runtime only: ReazonSpeech (ja), Silero VAD,
+              Japanese punctuation. No LID or other-language models. ~850 MB.
   --minimal   ja/en core only: ReazonSpeech (ja), whisper-tiny (LID + en
               fallback via VAD), Silero VAD, Japanese punctuation. ~1.1 GB.
   (default)   Everything the runtime routing in asr_engine.py can reach:
@@ -150,8 +152,12 @@ def download_hf_repo(repo: str, dest_dir: str, label: str, ignore_patterns=None)
     snapshot_download(repo_id=repo, local_dir=target, ignore_patterns=ignore_patterns)
 
 
-def main():
+def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--japanese-only", action="store_true",
+                     help="only download the Japanese runtime (~850MB): ReazonSpeech, "
+                          "Silero VAD, and Japanese punctuation. Skips whisper-tiny LID "
+                          "and every non-Japanese model.")
     ap.add_argument("--minimal", action="store_true",
                      help="only download the ja/en core (~1.1GB): ReazonSpeech, whisper-tiny, "
                           "Silero VAD, Japanese punctuation. Skips zh/ko/yue/EU/omnilingual "
@@ -160,11 +166,18 @@ def main():
                      help="also download 2 extra models (~1GB) used only by scripts/eval_accuracy.py "
                           "and scripts/make_realset_zhko.py as comparison baselines -- not needed "
                           "to run realtime_transcribe.py.")
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
+
+    if args.japanese_only and args.minimal:
+        ap.error("--japanese-only and --minimal are mutually exclusive")
+    if args.japanese_only and args.eval_baselines:
+        ap.error("--eval-baselines cannot be combined with --japanese-only")
 
     os.makedirs(MODELS_DIR, exist_ok=True)
 
-    total_gb = "~1.1GB" if args.minimal else ("~4.1GB" if args.eval_baselines else "~3.1GB")
+    total_gb = ("~850MB" if args.japanese_only else
+                "~1.1GB" if args.minimal else
+                "~4.1GB" if args.eval_baselines else "~3.1GB")
     print(f"hayamimi model download: this will fetch {total_gb} into {MODELS_DIR}")
     print("(see THIRD_PARTY_NOTICES.md for each model's license)\n")
 
@@ -174,10 +187,11 @@ def main():
         "sherpa-onnx-zipformer-ja-en-reazonspeech-2025-01-17",
         "ReazonSpeech k2 Zipformer (ja, primary ASR route)")
 
-    download_and_extract_tarbz2(
-        f"{GITHUB_RELEASES}/{ASR_TAG}/sherpa-onnx-whisper-tiny.tar.bz2",
-        "sherpa-onnx-whisper-tiny",
-        "whisper-tiny (spoken-language ID)")
+    if not args.japanese_only:
+        download_and_extract_tarbz2(
+            f"{GITHUB_RELEASES}/{ASR_TAG}/sherpa-onnx-whisper-tiny.tar.bz2",
+            "sherpa-onnx-whisper-tiny",
+            "whisper-tiny (spoken-language ID)")
 
     download_file(
         f"{GITHUB_RELEASES}/{ASR_TAG}/silero_vad.onnx",
@@ -194,6 +208,11 @@ def main():
         "mojicast-punct-onnx",
         "Japanese punctuation restoration (Mojicast/tohoku-nlp, fp32 only)",
         ignore_patterns=["*.int8.onnx"])
+
+    if args.japanese_only:
+        print("\n--japanese-only done. This set excludes LID and non-Japanese ASR models; "
+              "run realtime_transcribe.py with --mode single --lang ja.")
+        return
 
     if args.minimal:
         print("\n--minimal done. zh/ko/yue/EU/omnilingual ASR, speaker labels, and "
