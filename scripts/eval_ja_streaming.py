@@ -160,20 +160,34 @@ class Evaluator:
         # Match the production CLI: model/LID warmup happens before measured
         # audio, while background preload stays off to keep eval timing stable.
         common = dict(threads=threads, warmup=True, preload=False, max_resident=3)
-        self.single_asr = RoutedASR(**common, forced_lang="ja")
-        self.balanced_asr = RoutedASR(**common)
+        self.asr = RoutedASR(**common)
+        self._refiner = None
 
     def offline_primary(self, wav_path: str) -> DecodeOutput:
         from realtime_transcribe import read_wave
 
         samples, sample_rate = read_wave(wav_path)
         before = _rss_bytes()
-        recognizer = self.single_asr._get("rz")
+        recognizer = self.asr._get("rz")
         started = time.perf_counter()
-        text = self.single_asr._decode(recognizer, samples, sample_rate)
+        text = self.asr._decode(recognizer, samples, sample_rate)
         elapsed_ms = (time.perf_counter() - started) * 1000
         return DecodeOutput(text, len(samples) / sample_rate, elapsed_ms, [elapsed_ms],
                             max(before, _rss_bytes()))
+
+    def _prepare_refiner(self, refiner_type, asr, history, sample_rate, printer, stats):
+        if self._refiner is None:
+            self._refiner = refiner_type(asr, history, sample_rate, printer, stats=stats)
+        else:
+            # Every prior task is joined before per-clip state is replaced,
+            # so output remains FIFO and worker threads do not accumulate.
+            self._refiner._task_queue.join()
+            self._refiner.history = history
+            self._refiner.sr = sample_rate
+            self._refiner.printer = printer
+            self._refiner.stats = stats
+            self._refiner.spans = []
+        return self._refiner
 
     def stream(self, wav_path: str, *, refine: bool, single_ja: bool) -> DecodeOutput:
         from realtime_transcribe import (AudioHistory, PartialPrinter, Refiner, SessionStats,
@@ -181,24 +195,32 @@ class Evaluator:
                                          wav_chunks)
 
         samples, sample_rate = read_wave(wav_path)
-        asr = self.single_asr if single_ja else self.balanced_asr
+        asr = self.asr
+        previous_forced_lang = asr.forced_lang
+        asr.forced_lang = "ja" if single_ja else None
         asr.reset_session()
         vad = build_vad(self.min_silence, self.max_speech)
         stats = SessionStats()
         capture = _CaptureServer()
         printer = PartialPrinter(enabled=False, server=capture)
         history = AudioHistory(sample_rate)
-        refiner = Refiner(asr, history, sample_rate, printer, stats=stats) if refine else None
+        refiner = None
+        if refine:
+            refiner = self._prepare_refiner(
+                Refiner, asr, history, sample_rate, printer, stats)
         before = _rss_bytes()
         started = time.perf_counter()
-        run_stream(wav_chunks(samples, sample_rate, realtime=False), vad, sample_rate, asr,
-                   stats, printer, refiner, history)
-        vad.flush()
-        drain_segments(vad, sample_rate, asr, stats, printer, history, refiner=refiner)
-        if refiner is not None:
-            refiner.maybe_refine(0, force=True)
-            refiner._task_queue.join()
-        elapsed_ms = (time.perf_counter() - started) * 1000
+        try:
+            run_stream(wav_chunks(samples, sample_rate, realtime=False), vad, sample_rate, asr,
+                       stats, printer, refiner, history)
+            vad.flush()
+            drain_segments(vad, sample_rate, asr, stats, printer, history, refiner=refiner)
+            if refiner is not None:
+                refiner.maybe_refine(0, force=True)
+                refiner._task_queue.join()
+            elapsed_ms = (time.perf_counter() - started) * 1000
+        finally:
+            asr.forced_lang = previous_forced_lang
         events = capture.refines if refine and capture.refines else capture.finals
         text = "\n".join(event["text"] for event in events if event.get("text", "").strip())
         return DecodeOutput(text, len(samples) / sample_rate, elapsed_ms,
@@ -321,11 +343,11 @@ def render_markdown(metrics: dict[str, Any], hypotheses: list[dict[str, Any]]) -
                 f"{pct(item['term_f1'])} | {pct(item['digits_exact_rate'])} | "
                 f"{pct(item['empty_rate'])} |")
     lines += ["", "Boundary missing counts are conservative alignment-based counts: only leading or trailing reference deletions are counted.",
-              "", "## Hypotheses", "", "| id | mode | category | reference | hypothesis | CER |", "|---|---|---|---|---|---:|"]
+              "", "## Hypotheses", "", "| id | mode | text stage | category | reference | hypothesis | CER |", "|---|---|---|---|---|---|---:|"]
     for row in hypotheses:
         def esc(value):
             return str(value).replace("|", "\\|").replace("\n", "<br>")
-        lines.append(f"| {esc(row['id'])} | {esc(row['mode'])} | {esc(row['category'])} | "
+        lines.append(f"| {esc(row['id'])} | {esc(row['mode'])} | {esc(row.get('text_stage', 'unknown'))} | {esc(row['category'])} | "
                      f"{esc(row['reference'])} | {esc(row['text'])} | {pct(row['cer'])} |")
     return "\n".join(lines) + "\n"
 
@@ -370,8 +392,12 @@ def main(argv: list[str] | None = None) -> int:
             parser.error(f"audio file not found for {entry['id']}: {entry['wav']}")
         for mode in args.modes:
             decoded = evaluator.decode(mode, entry["wav_path"])
+            is_raw = mode == "offline_primary"
             hypotheses.append({
                 "id": entry["id"], "mode": mode, "text": decoded.text,
+                "text_stage": "raw" if is_raw else "display",
+                "raw_text": decoded.text if is_raw else None,
+                "display_text": None if is_raw else decoded.text,
                 "audio_s": decoded.audio_s, "decode_ms": decoded.decode_ms,
                 "final_latencies_ms": decoded.final_latencies_ms,
                 "max_rss_bytes": decoded.max_rss_bytes, "segments": decoded.segments,

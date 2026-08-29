@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
 from eval_common import (abnormal_repetition, digits_exact, edit_counts,
                          normalize_ja, term_counts)
 from eval_ja_streaming import (DEFAULT_MODES, Evaluator, ManifestError, load_manifest,
-                               main, model_status, render_markdown, score_hypotheses,
+                               DecodeOutput, main, model_status, render_markdown, score_hypotheses,
                                write_reports)
 
 
@@ -108,6 +108,69 @@ def test_cli_skips_cleanly_when_models_are_missing(tmp_path, monkeypatch, capsys
     monkeypatch.setattr("eval_ja_streaming.model_status", lambda: (False, ["ReazonSpeech encoder"]))
     assert main(["--manifest", str(manifest)]) == 0
     assert "integration evaluation skipped" in capsys.readouterr().err
+
+
+def test_cli_labels_raw_and_display_outputs(tmp_path, monkeypatch):
+    wav_path = tmp_path / "one.wav"
+    wav_path.write_bytes(b"placeholder")
+    manifest = tmp_path / "manifest.jsonl"
+    manifest.write_text(json.dumps({
+        "id": "one", "wav": "one.wav", "text": "テスト", "category": "clean_mic",
+    }, ensure_ascii=False) + "\n", encoding="utf-8")
+
+    class FakeEvaluator:
+        def __init__(self, *args):
+            pass
+
+        def decode(self, mode, wav):
+            return DecodeOutput("テスト", 1.0, 10.0, [10.0], 1024)
+
+    monkeypatch.setattr("eval_ja_streaming.model_status", lambda: (True, []))
+    monkeypatch.setattr("eval_ja_streaming.Evaluator", FakeEvaluator)
+    monkeypatch.setattr("eval_ja_streaming.environment_metadata", lambda: {})
+    output = tmp_path / "out"
+    assert main(["--manifest", str(manifest), "--output", str(output)]) == 0
+    rows = [json.loads(line) for line in
+            (output / "hypotheses.jsonl").read_text(encoding="utf-8").splitlines()]
+    offline = next(row for row in rows if row["mode"] == "offline_primary")
+    streaming = next(row for row in rows if row["mode"] == "stream_fast")
+    assert (offline["text_stage"], offline["raw_text"], offline["display_text"]) == (
+        "raw", "テスト", None)
+    assert (streaming["text_stage"], streaming["raw_text"], streaming["display_text"]) == (
+        "display", None, "テスト")
+
+
+def test_evaluator_reuses_one_refiner_worker_and_joins_before_rebinding():
+    class FakeQueue:
+        def __init__(self):
+            self.joins = 0
+
+        def join(self):
+            self.joins += 1
+
+    class FakeRefiner:
+        created = 0
+
+        def __init__(self, asr, history, sample_rate, printer, stats=None):
+            FakeRefiner.created += 1
+            self.history = history
+            self.sr = sample_rate
+            self.printer = printer
+            self.stats = stats
+            self.spans = ["old"]
+            self._task_queue = FakeQueue()
+
+    evaluator = Evaluator.__new__(Evaluator)
+    evaluator._refiner = None
+    first = evaluator._prepare_refiner(FakeRefiner, "asr", "history-1", 16000,
+                                       "printer-1", "stats-1")
+    second = evaluator._prepare_refiner(FakeRefiner, "asr", "history-2", 8000,
+                                        "printer-2", "stats-2")
+    assert first is second
+    assert FakeRefiner.created == 1
+    assert second._task_queue.joins == 1
+    assert (second.history, second.sr, second.printer, second.stats, second.spans) == (
+        "history-2", 8000, "printer-2", "stats-2", [])
 
 
 _models_available, _missing_models = model_status()
