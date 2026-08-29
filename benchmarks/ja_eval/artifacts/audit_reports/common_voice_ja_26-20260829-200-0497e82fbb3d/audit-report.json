@@ -1,0 +1,37 @@
+{
+  "approved_for_gate": false,
+  "audit_id": "common_voice_ja_26-20260829-200-0497e82fbb3d",
+  "dataset_id": "common_voice_ja_26",
+  "dataset_status": "experimental",
+  "dataset_version": "26.0",
+  "gate_thresholds": {
+    "maximum_severe_issue_rate": 0.05,
+    "maximum_truncated_rate": 0.02,
+    "requires_complete_review": true,
+    "requires_no_uncertain": true
+  },
+  "generated_at": "2026-08-29T22:36:18.734609+00:00",
+  "history_entries": 208,
+  "label_counts": {
+    "bad_audio": 35,
+    "major_transcript_mismatch": 6,
+    "minor_transcript_issue": 8,
+    "ok": 148,
+    "truncated_audio": 1,
+    "wrong_language": 2
+  },
+  "privacy": {
+    "contains_audio_paths": false,
+    "contains_references": false,
+    "contains_sample_ids": false,
+    "contains_speaker_ids": false
+  },
+  "reviewed_count": 200,
+  "sample_count": 200,
+  "samples_sha256": "a0ecb52b12f2ed18c2fe2e8e45c102c3d9a6d2cf91219942bcd7b8aa3d100336",
+  "schema_version": 1,
+  "selected_ids_sha256": "f293bf0b5255f6a8a992e6860bdcb052a8585e064b09636557073d59698b9633",
+  "severe_issue_rate": 0.215,
+  "source_manifest_sha256": "71ca626b2d041e6c142301efc7c159587e8ffa5dddc962db3c72dd1cff4ca504",
+  "truncated_rate": 0.005
+}

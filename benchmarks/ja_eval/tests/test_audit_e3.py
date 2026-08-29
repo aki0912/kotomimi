@@ -15,6 +15,7 @@ from kotomimi_eval.audit.workflow import (
     load_audit,
     load_audit_status,
     load_decisions,
+    write_audit_report,
 )
 from kotomimi_eval.errors import EvaluationConfigError
 from kotomimi_eval.errors import DatasetPreparationError
@@ -75,6 +76,28 @@ def test_decisions_append_history_and_compute_gate_status(tmp_path):
     status = load_audit_status(tmp_path / "artifacts", metadata["audit_id"])
     assert status["complete"] is True
     assert status["approved_for_gate"] is True
+    assert status["dataset_status"] == "approved"
+
+
+def test_failed_complete_audit_is_experimental_and_report_is_private(tmp_path):
+    _, metadata, _ = _create_fixture_audit(tmp_path, count=2)
+    _, samples, _ = load_audit(tmp_path / "artifacts", metadata["audit_id"])
+    sample_ids = {row["sample_id"] for row in samples}
+    for index, row in enumerate(samples):
+        append_decision(tmp_path / "artifacts", metadata["audit_id"], sample_ids, {
+            "sample_id": row["sample_id"],
+            "label": "bad_audio" if index == 0 else "ok",
+            "noise_level": "heavy" if index == 0 else "clean",
+            "speech_style": "read",
+        })
+    status = load_audit_status(tmp_path / "artifacts", metadata["audit_id"])
+    assert status["dataset_status"] == "experimental"
+    report, directory = write_audit_report(tmp_path / "artifacts", metadata["audit_id"])
+    serialized = (directory / "audit-report.json").read_text(encoding="utf-8")
+    assert report["dataset_status"] == "experimental"
+    assert report["privacy"]["contains_sample_ids"] is False
+    assert not any(row["sample_id"] in serialized for row in samples)
+    assert not any(row["reference_raw"] in serialized for row in samples)
 
 
 def test_audit_server_persists_post_and_shuts_down(tmp_path):

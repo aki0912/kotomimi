@@ -1,5 +1,5 @@
 """Persistent, local-only human-audit workflow."""
 
-from .workflow import create_audit, load_audit_status
+from .workflow import create_audit, load_audit_status, write_audit_report
 
-__all__ = ["create_audit", "load_audit_status"]
+__all__ = ["create_audit", "load_audit_status", "write_audit_report"]

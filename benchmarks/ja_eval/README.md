@@ -104,6 +104,9 @@ are appended and synced after every POST. The server rejects non-loopback bind
 addresses; its default URL is `http://127.0.0.1:8765/`.
 
 Use `python -m kotomimi_eval audit status --latest` to inspect completion and
-the initial quality gate. Audit samples, decisions, and audio remain local.
+the initial quality gate. `audit report --latest` writes a privacy-safe aggregate
+JSON/Markdown report. A complete audit that exceeds the configured quality gate
+is explicitly marked `experimental`; it is not silently approved or deleted.
+Audit samples, decisions, and audio remain local.
 
 See `LICENSE_POLICY.md` and `THIRD_PARTY_DATASETS.md` before acquiring data.

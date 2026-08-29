@@ -280,6 +280,7 @@ def load_audit_status(artifact_root: str | Path, audit_id: str) -> dict:
         and severe / total <= 0.05
         and truncated / total <= 0.02
     ) if total else False
+    dataset_status = "pending" if not complete else "approved" if approved else "experimental"
     return {
         "schema_version": 1,
         "audit_id": audit_id,
@@ -291,6 +292,81 @@ def load_audit_status(artifact_root: str | Path, audit_id: str) -> dict:
         "label_counts": dict(sorted(labels.items())),
         "complete": complete,
         "approved_for_gate": approved,
+        "dataset_status": dataset_status,
         "severe_issue_rate": severe / total if total else 0.0,
         "truncated_rate": truncated / total if total else 0.0,
     }
+
+
+def _write_text_atomic(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    part = path.with_name(path.name + ".part")
+    try:
+        part.write_text(text, encoding="utf-8", newline="\n")
+        part.replace(path)
+    finally:
+        if part.exists():
+            part.unlink()
+
+
+def write_audit_report(artifact_root: str | Path, audit_id: str) -> tuple[dict, Path]:
+    metadata, _, _ = load_audit(artifact_root, audit_id)
+    status = load_audit_status(artifact_root, audit_id)
+    report = {
+        "schema_version": 1,
+        "audit_id": audit_id,
+        "dataset_id": metadata["dataset_id"],
+        "dataset_version": metadata["dataset_version"],
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "source_manifest_sha256": metadata["source_manifest_sha256"],
+        "samples_sha256": metadata["samples_sha256"],
+        "selected_ids_sha256": metadata["selected_ids_sha256"],
+        "sample_count": metadata["count"],
+        "reviewed_count": status["reviewed"],
+        "history_entries": status["history_entries"],
+        "label_counts": status["label_counts"],
+        "dataset_status": status["dataset_status"],
+        "approved_for_gate": status["approved_for_gate"],
+        "severe_issue_rate": status["severe_issue_rate"],
+        "truncated_rate": status["truncated_rate"],
+        "gate_thresholds": {
+            "maximum_severe_issue_rate": 0.05,
+            "maximum_truncated_rate": 0.02,
+            "requires_complete_review": True,
+            "requires_no_uncertain": True,
+        },
+        "privacy": {
+            "contains_sample_ids": False,
+            "contains_references": False,
+            "contains_audio_paths": False,
+            "contains_speaker_ids": False,
+        },
+    }
+    directory = Path(artifact_root) / "audit_reports" / audit_id
+    write_json_atomic(directory / "audit-report.json", report)
+    label_lines = "\n".join(
+        f"| `{label}` | {count} |" for label, count in report["label_counts"].items()
+    ) or "| — | 0 |"
+    markdown = f"""# Audit report: {audit_id}
+
+- Dataset: `{report['dataset_id']}`
+- Version: `{report['dataset_version']}`
+- Status: **{report['dataset_status']}**
+- Reviewed: {report['reviewed_count']} / {report['sample_count']}
+- Severe issue rate: {report['severe_issue_rate']:.1%} (maximum 5.0%)
+- Truncated rate: {report['truncated_rate']:.1%} (maximum 2.0%)
+- Approved for gate: `{str(report['approved_for_gate']).lower()}`
+
+The official evaluation remains available. An experimental dataset is not used
+as an approved release gate, and the clean view does not replace official results.
+
+## Labels
+
+| label | count |
+|---|---:|
+{label_lines}
+
+This aggregate report contains no sample IDs, references, audio paths, or speaker IDs.
+"""
+    _write_text_atomic(directory / "audit-report.md", markdown)
+    return report, directory

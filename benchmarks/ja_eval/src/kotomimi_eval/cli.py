@@ -242,7 +242,18 @@ def _audit_status(args: argparse.Namespace) -> int:
     else:
         print(f"audit {audit_id}: reviewed={status['reviewed']}/{status['total']} "
               f"remaining={status['remaining']} complete={status['complete']} "
+              f"status={status['dataset_status']} "
               f"approved_for_gate={status['approved_for_gate']}")
+    return 0
+
+
+def _audit_report(args: argparse.Namespace) -> int:
+    audit_id = _selected_audit_id(args)
+    from .audit.workflow import write_audit_report
+
+    report, directory = write_audit_report(args.artifact_root, audit_id)
+    print(f"wrote audit report {audit_id}: status={report['dataset_status']} "
+          f"directory={_display_path(directory)}")
     return 0
 
 
@@ -351,6 +362,12 @@ def build_parser() -> argparse.ArgumentParser:
     audit_status.add_argument("--artifact-root", default=str(DEFAULT_ARTIFACT_ROOT))
     audit_status.add_argument("--json", action="store_true")
     audit_status.set_defaults(handler=_audit_status)
+    audit_report = audit_commands.add_parser("report", help="write a privacy-safe audit summary")
+    report_target = audit_report.add_mutually_exclusive_group(required=True)
+    report_target.add_argument("--audit-id")
+    report_target.add_argument("--latest", action="store_true")
+    audit_report.add_argument("--artifact-root", default=str(DEFAULT_ARTIFACT_ROOT))
+    audit_report.set_defaults(handler=_audit_report)
 
     suite_parser = commands.add_parser("suite", help="deterministic suite operations")
     suite_commands = suite_parser.add_subparsers(dest="suite_command", required=True)
