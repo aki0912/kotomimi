@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from kotomimi_eval.cli import main
+from kotomimi_eval.cli import build_parser, main
 
 
 def test_dataset_list_json(capsys):
@@ -57,3 +57,9 @@ def test_common_voice_api_dependency_degrades_clearly(tmp_path, monkeypatch, cap
     ])
     assert result == 2
     assert "optional 'mdc' dependency" in capsys.readouterr().err
+
+
+def test_audit_server_cli_defaults_to_loopback():
+    args = build_parser().parse_args(["audit", "serve", "--latest"])
+    assert args.host == "127.0.0.1"
+    assert args.port == 8765

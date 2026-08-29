@@ -13,7 +13,28 @@ audio:
   trailing_silence_s: 1.0
   low_speech_fraction: 0.15
   high_speech_fraction: 0.98
+  speech_frame_ms: 20
+  speech_frame_dbfs: -40.0
 text:
   very_short_chars: 1
   very_long_chars: 300
   digit_heavy_ratio: 0.3
+  minimum_language_char_ratio: 0.8
+clean:
+  exclude_flags:
+    - too_short
+    - too_long
+    - very_quiet
+    - very_loud
+    - possible_clipping
+    - dc_offset
+    - long_leading_silence
+    - long_trailing_silence
+    - low_speech_fraction
+    - high_speech_fraction
+    - replacement_char
+    - suspicious_markup
+    - low_japanese_ratio
+    - repeated_chars
+    - duplicate_pcm
+    - duplicate_audio_text

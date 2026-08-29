@@ -1,0 +1,296 @@
+from __future__ import annotations
+
+from collections import Counter, defaultdict
+from datetime import datetime, timezone
+import hashlib
+import json
+import math
+import os
+from pathlib import Path
+import re
+import threading
+
+from ..errors import DatasetPreparationError, EvaluationConfigError
+from ..hashing import sha256_file
+from ..licensing.policy import check_dataset_license
+from ..licensing.registry import DatasetRecord
+from ..paths import safe_relative_parts
+from ..prepare.manifest import canonical_json, load_manifest, write_json_atomic, write_jsonl_atomic
+from ..prepare.sampling import stable_score
+from ..schema_validation import validate_schema
+
+
+AUDIT_LABELS = (
+    "ok",
+    "minor_transcript_issue",
+    "major_transcript_mismatch",
+    "bad_audio",
+    "truncated_audio",
+    "wrong_language",
+    "unexpected_nonverbal",
+    "duplicate",
+    "uncertain",
+)
+NOISE_LEVELS = ("clean", "mild", "heavy")
+SPEECH_STYLES = ("read", "spontaneous", "acted", "nonverbal")
+_AUDIT_ID = re.compile(r"^[a-z0-9][a-z0-9._-]{0,127}$")
+_DECISION_LOCK = threading.Lock()
+
+
+def audit_directory(artifact_root: str | Path, audit_id: str) -> Path:
+    if not _AUDIT_ID.fullmatch(audit_id):
+        raise EvaluationConfigError("audit ID contains unsafe characters")
+    return Path(artifact_root) / "audits" / audit_id
+
+
+def _duration_bin(duration: float) -> str:
+    return "short" if duration < 3 else "medium" if duration <= 8 else "long"
+
+
+def _audit_stratum(record: DatasetRecord, row: dict) -> tuple[str, ...]:
+    metadata = row.get("metadata", {})
+    flagged = "flagged" if row.get("qc", {}).get("flags") else "unflagged"
+    if record.adapter == "common_voice":
+        return (
+            _duration_bin(float(row["duration_s"])),
+            str(metadata.get("vote_margin_bin") or "unknown"),
+            str(metadata.get("sentence_domain") or "unknown"),
+            str(metadata.get("age") or "unknown"),
+            str(metadata.get("gender") or "unknown"),
+            flagged,
+        )
+    if record.adapter == "fleurs":
+        return (
+            str(row.get("speaker_id") or "speaker-unavailable"),
+            _duration_bin(float(row["duration_s"])),
+            flagged,
+        )
+    return (_duration_bin(float(row["duration_s"])), flagged)
+
+
+def deterministic_audit_sample(
+    record: DatasetRecord, rows: list[dict], count: int, seed: int,
+) -> list[dict]:
+    if count <= 0 or count > len(rows):
+        raise EvaluationConfigError("audit count is outside available rows")
+    groups: dict[tuple[str, ...], list[dict]] = defaultdict(list)
+    for row in rows:
+        groups[_audit_stratum(record, row)].append(row)
+    exact = {key: count * len(group) / len(rows) for key, group in groups.items()}
+    quotas = {key: math.floor(value) for key, value in exact.items()}
+    remainder = count - sum(quotas.values())
+    for key in sorted(groups, key=lambda item: (-(exact[item] - quotas[item]), item))[:remainder]:
+        quotas[key] += 1
+    speaker_counts: dict[str, int] = defaultdict(int)
+    selected = []
+    for key in sorted(groups):
+        available = list(groups[key])
+        for _ in range(quotas[key]):
+            chosen = min(
+                available,
+                key=lambda row: (
+                    speaker_counts[str(row.get("speaker_id") or row["sample_id"])],
+                    stable_score(seed, row["sample_id"]),
+                ),
+            )
+            available.remove(chosen)
+            speaker_counts[str(chosen.get("speaker_id") or chosen["sample_id"])] += 1
+            selected.append(chosen)
+    return sorted(selected, key=lambda row: stable_score(seed, row["sample_id"]))
+
+
+def _load_qc_official_manifest(
+    record: DatasetRecord, data_root: Path, artifact_root: Path,
+) -> tuple[Path, dict]:
+    prepared_manifest = (data_root / "prepared" / record.dataset_id / record.version
+                         / "manifest.jsonl")
+    input_hash = sha256_file(prepared_manifest)
+    report_path = artifact_root / "qc" / record.dataset_id / input_hash[:16] / "qc.json"
+    try:
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise DatasetPreparationError(
+            f"QC report is missing for {record.dataset_id}; run qc first") from exc
+    if (report.get("input_manifest_sha256") != input_hash
+            or report.get("hard_failures")):
+        raise DatasetPreparationError("QC report is stale or contains hard failures")
+    relative = report["views"]["official"]["manifest_relative_to_data_root"]
+    try:
+        parts = safe_relative_parts(relative)
+    except ValueError:
+        raise DatasetPreparationError("QC report contains an unsafe manifest path")
+    manifest = data_root.joinpath(*parts)
+    if sha256_file(manifest) != report["views"]["official"]["manifest_sha256"]:
+        raise DatasetPreparationError("QC official manifest hash does not match report")
+    return manifest, report
+
+
+def create_audit(
+    record: DatasetRecord,
+    data_root: str | Path,
+    artifact_root: str | Path,
+    *,
+    count: int,
+    seed: int,
+) -> tuple[dict, Path]:
+    check_dataset_license(record)
+    data_root_path = Path(data_root)
+    artifact_root_path = Path(artifact_root)
+    manifest_path, qc_report = _load_qc_official_manifest(
+        record, data_root_path, artifact_root_path)
+    rows = load_manifest(manifest_path)
+    selected = deterministic_audit_sample(record, rows, count, seed)
+    selected_ids = "\n".join(row["sample_id"] for row in selected).encode("ascii")
+    audit_id = f"{record.dataset_id}-{seed}-{count}-{qc_report['input_manifest_sha256'][:12]}"
+    directory = audit_directory(artifact_root_path, audit_id)
+    metadata_path = directory / "audit.json"
+    samples_path = directory / "samples.jsonl"
+    if metadata_path.exists() or samples_path.exists():
+        try:
+            existing = json.loads(metadata_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise DatasetPreparationError("existing audit metadata is invalid") from exc
+        identity = ("dataset_id", "dataset_version", "count", "seed", "source_manifest_sha256")
+        proposed = {
+            "dataset_id": record.dataset_id,
+            "dataset_version": record.version,
+            "count": count,
+            "seed": seed,
+            "source_manifest_sha256": qc_report["views"]["official"]["manifest_sha256"],
+        }
+        if any(existing.get(key) != proposed[key] for key in identity):
+            raise DatasetPreparationError("refusing to overwrite a different audit")
+        if (not samples_path.is_file()
+                or existing.get("samples_sha256") != sha256_file(samples_path)):
+            raise DatasetPreparationError("existing audit samples do not match metadata")
+        return existing, directory
+    row_count, samples_hash = write_jsonl_atomic(samples_path, selected)
+    metadata = {
+        "schema_version": 1,
+        "audit_id": audit_id,
+        "dataset_id": record.dataset_id,
+        "dataset_version": record.version,
+        "count": row_count,
+        "seed": seed,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "source_manifest_sha256": qc_report["views"]["official"]["manifest_sha256"],
+        "samples_sha256": samples_hash,
+        "selected_ids_sha256": hashlib.sha256(selected_ids).hexdigest(),
+        "speaker_metadata": (
+            "provided-hash" if any(row.get("speaker_id") for row in selected)
+            else "unavailable-no-inference"
+        ),
+    }
+    write_json_atomic(metadata_path, metadata)
+    return metadata, directory
+
+
+def load_audit(artifact_root: str | Path, audit_id: str) -> tuple[dict, list[dict], Path]:
+    directory = audit_directory(artifact_root, audit_id)
+    try:
+        metadata = json.loads((directory / "audit.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise DatasetPreparationError(f"audit is missing or invalid: {audit_id}") from exc
+    samples_path = directory / "samples.jsonl"
+    if metadata.get("samples_sha256") != sha256_file(samples_path):
+        raise DatasetPreparationError("audit samples hash does not match metadata")
+    samples = load_manifest(samples_path)
+    if len(samples) != metadata.get("count"):
+        raise DatasetPreparationError("audit sample count does not match metadata")
+    return metadata, samples, directory
+
+
+def append_decision(
+    artifact_root: str | Path,
+    audit_id: str,
+    sample_ids: set[str],
+    values: dict[str, str],
+) -> dict:
+    sample_id = values.get("sample_id", "")
+    if sample_id not in sample_ids:
+        raise EvaluationConfigError("decision sample is not part of this audit")
+    label = values.get("label", "")
+    noise = values.get("noise_level", "")
+    style = values.get("speech_style", "")
+    if label not in AUDIT_LABELS or noise not in NOISE_LEVELS or style not in SPEECH_STYLES:
+        raise EvaluationConfigError("audit decision contains an invalid choice")
+    decision = {
+        "schema_version": 1,
+        "audit_id": audit_id,
+        "sample_id": sample_id,
+        "label": label,
+        "reviewed_at": datetime.now(timezone.utc).isoformat(),
+        "spoken_text_notes": values.get("spoken_text_notes", "")[:10_000],
+        "noise_level": noise,
+        "speech_style": style,
+        "reviewer_comment": values.get("reviewer_comment", "")[:10_000],
+    }
+    validate_schema(decision, "audit.schema.json")
+    decisions_path = audit_directory(artifact_root, audit_id) / "decisions.jsonl"
+    decisions_path.parent.mkdir(parents=True, exist_ok=True)
+    encoded = (canonical_json(decision) + "\n").encode("utf-8")
+    with _DECISION_LOCK:
+        descriptor = os.open(decisions_path, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o600)
+        with os.fdopen(descriptor, "ab") as handle:
+            handle.write(encoded)
+            handle.flush()
+            os.fsync(handle.fileno())
+    return decision
+
+
+def load_decisions(artifact_root: str | Path, audit_id: str) -> tuple[list[dict], dict[str, dict]]:
+    path = audit_directory(artifact_root, audit_id) / "decisions.jsonl"
+    history = []
+    latest = {}
+    if not path.exists():
+        return history, latest
+    try:
+        with path.open(encoding="utf-8") as handle:
+            for line_number, line in enumerate(handle, start=1):
+                if not line.endswith("\n"):
+                    raise DatasetPreparationError(
+                        f"audit decision line {line_number} is incomplete")
+                decision = json.loads(line)
+                validate_schema(decision, "audit.schema.json")
+                if decision["audit_id"] != audit_id:
+                    raise DatasetPreparationError("audit decision belongs to another audit")
+                history.append(decision)
+                latest[decision["sample_id"]] = decision
+    except (OSError, json.JSONDecodeError) as exc:
+        raise DatasetPreparationError("audit decisions are invalid") from exc
+    return history, latest
+
+
+def load_audit_status(artifact_root: str | Path, audit_id: str) -> dict:
+    metadata, samples, _ = load_audit(artifact_root, audit_id)
+    history, latest = load_decisions(artifact_root, audit_id)
+    sample_ids = {row["sample_id"] for row in samples}
+    unexpected = set(latest) - sample_ids
+    if unexpected:
+        raise DatasetPreparationError("audit decisions contain a sample outside the audit")
+    labels = Counter(item["label"] for item in latest.values())
+    total = len(samples)
+    reviewed = len(latest)
+    severe = sum(labels[label] for label in (
+        "bad_audio", "major_transcript_mismatch", "wrong_language"))
+    truncated = labels["truncated_audio"]
+    complete = reviewed == total and labels["uncertain"] == 0
+    approved = (
+        complete
+        and severe / total <= 0.05
+        and truncated / total <= 0.02
+    ) if total else False
+    return {
+        "schema_version": 1,
+        "audit_id": audit_id,
+        "dataset_id": metadata["dataset_id"],
+        "total": total,
+        "reviewed": reviewed,
+        "remaining": total - reviewed,
+        "history_entries": len(history),
+        "label_counts": dict(sorted(labels.items())),
+        "complete": complete,
+        "approved_for_gate": approved,
+        "severe_issue_rate": severe / total if total else 0.0,
+        "truncated_rate": truncated / total if total else 0.0,
+    }

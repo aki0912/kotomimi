@@ -84,4 +84,26 @@ by duration, vote margin, sentence domain, age, and gender while spreading
 selected clips across the provided speaker groups. This is an evaluation set;
 neither source test split may be used for model or dictionary training.
 
+Build model-independent QC views and human-audit samples:
+
+```bash
+python -m kotomimi_eval qc run --dataset common_voice_ja_26
+python -m kotomimi_eval qc run --dataset fleurs_ja
+python -m kotomimi_eval audit create \
+  --dataset common_voice_ja_26 --count 200 --seed 20260829
+python -m kotomimi_eval audit create \
+  --dataset fleurs_ja --count 100 --seed 20260829
+python -m kotomimi_eval audit serve --latest
+```
+
+QC never overwrites a prepared manifest. The official view keeps every
+evaluable clip, while clean is a secondary subset based only on configured QC
+flags. Reports state that speech activity is estimated with 20 ms frame RMS,
+not model VAD. They must not be described as VAD measurements. Audit decisions
+are appended and synced after every POST. The server rejects non-loopback bind
+addresses; its default URL is `http://127.0.0.1:8765/`.
+
+Use `python -m kotomimi_eval audit status --latest` to inspect completion and
+the initial quality gate. Audit samples, decisions, and audio remain local.
+
 See `LICENSE_POLICY.md` and `THIRD_PARTY_DATASETS.md` before acquiring data.

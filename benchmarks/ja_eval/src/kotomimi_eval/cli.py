@@ -174,6 +174,78 @@ def _suite_build(args: argparse.Namespace) -> int:
     return 0
 
 
+def _qc_run(args: argparse.Namespace) -> int:
+    registry = load_registry()
+    record = registry.get(args.dataset_id)
+    from .qc.runner import run_qc
+
+    report, report_dir = run_qc(record, args.data_root, args.artifact_root)
+    print(f"QC {record.dataset_id}: official={report['views']['official']['rows']} "
+          f"clean={report['views']['clean']['rows']} "
+          f"hard_failures={len(report['hard_failures'])} "
+          f"report={_display_path(report_dir)}")
+    return 2 if report["hard_failures"] else 0
+
+
+def _audit_create(args: argparse.Namespace) -> int:
+    registry = load_registry()
+    record = registry.get(args.dataset_id)
+    from .audit.workflow import create_audit
+
+    metadata, directory = create_audit(
+        record, args.data_root, args.artifact_root, count=args.count, seed=args.seed)
+    print(f"created audit {metadata['audit_id']}: samples={metadata['count']} "
+          f"directory={_display_path(directory)}")
+    return 0
+
+
+def _latest_audit_id(artifact_root: str | Path) -> str:
+    candidates = []
+    for metadata_path in (Path(artifact_root) / "audits").glob("*/audit.json"):
+        try:
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+            candidates.append((metadata["created_at"], metadata["audit_id"]))
+        except (OSError, json.JSONDecodeError, KeyError, TypeError):
+            continue
+    if not candidates:
+        raise EvaluationConfigError("no local audits exist")
+    return max(candidates)[1]
+
+
+def _selected_audit_id(args: argparse.Namespace) -> str:
+    return _latest_audit_id(args.artifact_root) if args.latest else args.audit_id
+
+
+def _audit_serve(args: argparse.Namespace) -> int:
+    audit_id = _selected_audit_id(args)
+    from .audit.server import serve_audit
+
+    print(f"serving audit {audit_id} at http://{args.host}:{args.port}/")
+    serve_audit(
+        audit_id=audit_id,
+        registry=load_registry(),
+        data_root=args.data_root,
+        artifact_root=args.artifact_root,
+        host=args.host,
+        port=args.port,
+    )
+    return 0
+
+
+def _audit_status(args: argparse.Namespace) -> int:
+    audit_id = _selected_audit_id(args)
+    from .audit.workflow import load_audit_status
+
+    status = load_audit_status(args.artifact_root, audit_id)
+    if args.json:
+        print(json.dumps(status, ensure_ascii=False, sort_keys=True, indent=2))
+    else:
+        print(f"audit {audit_id}: reviewed={status['reviewed']}/{status['total']} "
+              f"remaining={status['remaining']} complete={status['complete']} "
+              f"approved_for_gate={status['approved_for_gate']}")
+    return 0
+
+
 def _suite_verify(args: argparse.Namespace) -> int:
     suites = load_suites()
     try:
@@ -245,6 +317,40 @@ def build_parser() -> argparse.ArgumentParser:
     check.add_argument("--approval-dir", default=str(APPROVAL_DIR))
     check.add_argument("--json", action="store_true", help="emit JSON")
     check.set_defaults(handler=_license_check)
+
+    qc_parser = commands.add_parser("qc", help="model-independent quality control")
+    qc_commands = qc_parser.add_subparsers(dest="qc_command", required=True)
+    qc_run = qc_commands.add_parser("run", help="build official and clean QC views")
+    qc_run.add_argument("--dataset", dest="dataset_id", required=True)
+    qc_run.add_argument("--data-root", default=str(DEFAULT_DATA_ROOT))
+    qc_run.add_argument("--artifact-root", default=str(DEFAULT_ARTIFACT_ROOT))
+    qc_run.set_defaults(handler=_qc_run)
+
+    audit_parser = commands.add_parser("audit", help="persistent local human audit")
+    audit_commands = audit_parser.add_subparsers(dest="audit_command", required=True)
+    audit_create = audit_commands.add_parser("create", help="create a deterministic audit sample")
+    audit_create.add_argument("--dataset", dest="dataset_id", required=True)
+    audit_create.add_argument("--count", type=int, required=True)
+    audit_create.add_argument("--seed", type=int, default=20260829)
+    audit_create.add_argument("--data-root", default=str(DEFAULT_DATA_ROOT))
+    audit_create.add_argument("--artifact-root", default=str(DEFAULT_ARTIFACT_ROOT))
+    audit_create.set_defaults(handler=_audit_create)
+    audit_serve = audit_commands.add_parser("serve", help="serve the loopback-only audit UI")
+    audit_target = audit_serve.add_mutually_exclusive_group(required=True)
+    audit_target.add_argument("--audit-id")
+    audit_target.add_argument("--latest", action="store_true")
+    audit_serve.add_argument("--host", default="127.0.0.1")
+    audit_serve.add_argument("--port", type=int, default=8765)
+    audit_serve.add_argument("--data-root", default=str(DEFAULT_DATA_ROOT))
+    audit_serve.add_argument("--artifact-root", default=str(DEFAULT_ARTIFACT_ROOT))
+    audit_serve.set_defaults(handler=_audit_serve)
+    audit_status = audit_commands.add_parser("status", help="summarize persisted decisions")
+    status_target = audit_status.add_mutually_exclusive_group(required=True)
+    status_target.add_argument("--audit-id")
+    status_target.add_argument("--latest", action="store_true")
+    audit_status.add_argument("--artifact-root", default=str(DEFAULT_ARTIFACT_ROOT))
+    audit_status.add_argument("--json", action="store_true")
+    audit_status.set_defaults(handler=_audit_status)
 
     suite_parser = commands.add_parser("suite", help="deterministic suite operations")
     suite_commands = suite_parser.add_subparsers(dest="suite_command", required=True)
