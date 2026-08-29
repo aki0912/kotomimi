@@ -12,6 +12,8 @@ import wave
 import pytest
 
 from kotomimi_eval.datasets.common_voice import (
+    MAX_ARCHIVE_MEMBERS,
+    MAX_EXPANDED_BYTES,
     _read_test_tsv,
     download_common_voice,
     import_common_voice_archive,
@@ -27,6 +29,12 @@ HEADER = (
     "client_id\tpath\tsentence_id\tsentence\tsentence_domain\tup_votes\t"
     "down_votes\tage\tgender\taccents\tvariant\tlocale\tsegment\n"
 )
+
+
+def test_common_voice_archive_limits_cover_release_with_bounded_headroom():
+    # CV 26.0 Japanese contains 584,932 members and expands to 15,990,715,387 bytes.
+    assert 584_932 < MAX_ARCHIVE_MEMBERS < 1_000_000
+    assert 15_990_715_387 < MAX_EXPANDED_BYTES <= 50 * 1024**3
 
 
 def _wav_bytes(frequency: int) -> bytes:

@@ -33,6 +33,8 @@ from .base import PreparedDataset
 
 ADAPTER_VERSION = 1
 NORMALIZATION_VERSION = 1
+MAX_ARCHIVE_MEMBERS = 750_000
+MAX_EXPANDED_BYTES = 50 * 1024**3
 REQUIRED_COLUMNS = frozenset({
     "client_id", "path", "sentence", "up_votes", "down_votes", "age", "gender",
 })
@@ -264,7 +266,10 @@ def prepare_common_voice(record: DatasetRecord, data_root: str | Path) -> Prepar
         raise DatasetPreparationError(
             "Common Voice registry must declare source locale and release")
     extracted = extract_tar_safely(
-        paths["archive"], paths["raw"], max_total_bytes=50 * 1024**3, max_members=250_000)
+        paths["archive"], paths["raw"],
+        max_total_bytes=MAX_EXPANDED_BYTES,
+        max_members=MAX_ARCHIVE_MEMBERS,
+    )
     test_tsv = _find_japanese_test_tsv(
         extracted, paths["raw"], locale, source_release)
     source_rows = _read_test_tsv(test_tsv, expected_rows)
