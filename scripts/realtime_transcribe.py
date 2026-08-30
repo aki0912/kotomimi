@@ -8,6 +8,7 @@ Usage:
     python scripts/realtime_transcribe.py                                 # live microphone
 """
 import argparse
+from dataclasses import dataclass, replace
 import os
 import queue
 import sys
@@ -22,11 +23,18 @@ import sherpa_onnx
 
 from asr_engine import RoutedASR
 from audio_utils import resample_linear
+from segment_window import (JapaneseOverlapSettings, SegmentWindowBuilder,
+                            load_japanese_overlap_settings,
+                            validate_japanese_overlap_settings)
+from text_overlap import MergeResult, merge_overlapping_text
 
 SAMPLE_RATE = 16000
 WINDOW_SIZE = 512  # samples per VAD chunk, ~32ms @ 16kHz
 MODELS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "models")
 VAD_MODEL = os.path.join(MODELS_DIR, "silero_vad.onnx")
+DEFAULT_JAPANESE_CONFIG = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "configs", "japanese.default.json")
 
 
 def read_wave(path: str, target_rate: int = SAMPLE_RATE):
@@ -161,6 +169,8 @@ class SessionStats:
         self.total_audio_s = 0.0
         self.segments = 0
         self.latencies_ms: list[float] = []
+        self.input_window_s: list[float] = []
+        self.overlap_merges = 0
         self.refine_lang_corrections = 0  # times the refine pass overruled the fast-path language
 
     def summary(self) -> str:
@@ -201,18 +211,107 @@ class AudioHistory:
         return np.concatenate([pre, seg_samples])
 
 
+@dataclass(frozen=True)
+class OverlapTextOutput:
+    text: str
+    raw_text: str
+    merged_context_text: str
+    merge: MergeResult | None
+
+
+class JapaneseOverlapSession:
+    """Small state adapter joining the two pure PR 2 modules."""
+
+    def __init__(self, settings: JapaneseOverlapSettings, sample_rate: int,
+                 max_speech_s: float):
+        self.settings = settings
+        self.sample_rate = sample_rate
+        self.max_speech_s = max_speech_s
+        self.window_builder = SegmentWindowBuilder()
+        self.previous_window_text = ""
+        self.merged_context_text = ""
+
+    def build_window(self, history: AudioHistory, speech_start: int, speech_end: int,
+                     speech_samples: np.ndarray):
+        forced_split = ((speech_end - speech_start) / self.sample_rate
+                        >= self.max_speech_s - WINDOW_SIZE / self.sample_rate)
+        return self.window_builder.build(
+            history=history,
+            speech_start=speech_start,
+            speech_end=speech_end,
+            speech_samples=speech_samples,
+            pre_context_s=self.settings.pre_context_s,
+            post_context_s=self.settings.post_context_s,
+            max_overlap_s=self.settings.max_overlap_s,
+            allow_previous_overlap=True,
+            forced_split=forced_split,
+        )
+
+    def merge_text(self, raw_text: str, audio_overlap_s: float) -> OverlapTextOutput:
+        if not self.previous_window_text or audio_overlap_s <= 0:
+            self.previous_window_text = raw_text
+            self.merged_context_text = raw_text
+            return OverlapTextOutput(raw_text, raw_text, raw_text, None)
+        merge = merge_overlapping_text(
+            self.previous_window_text,
+            raw_text,
+            audio_overlap_s=audio_overlap_s,
+            min_overlap_chars=self.settings.min_overlap_chars,
+            max_overlap_chars=self.settings.max_overlap_chars,
+            min_similarity=self.settings.min_similarity,
+        )
+        self.previous_window_text = raw_text
+        self.merged_context_text += merge.current_delta
+        return OverlapTextOutput(
+            merge.current_delta,
+            raw_text,
+            self.merged_context_text,
+            merge,
+        )
+
+
+def resolve_japanese_overlap_settings(
+        *, mode: str, lang: str | None, config_path: str,
+        enabled_override: bool | None = None, pre_context_s: float | None = None,
+        post_context_s: float | None = None, max_overlap_s: float | None = None,
+        min_similarity: float | None = None) -> JapaneseOverlapSettings | None:
+    """Resolve config only for the Japanese fixed-language profile."""
+    if mode != "single" or lang != "ja":
+        return None
+    settings = load_japanese_overlap_settings(config_path)
+    settings = replace(
+        settings,
+        enabled=(settings.enabled if enabled_override is None else enabled_override),
+        pre_context_s=(settings.pre_context_s if pre_context_s is None else pre_context_s),
+        post_context_s=(settings.post_context_s if post_context_s is None else post_context_s),
+        max_overlap_s=(settings.max_overlap_s if max_overlap_s is None else max_overlap_s),
+        min_similarity=(settings.min_similarity if min_similarity is None else min_similarity),
+    )
+    settings = validate_japanese_overlap_settings(settings, "CLI overrides")
+    return settings if settings.enabled else None
+
+
 def drain_segments(vad, sample_rate: int, asr: RoutedASR, stats: SessionStats,
                    printer: PartialPrinter, history: AudioHistory | None = None,
                    known_lang: str | None = None, refiner: "Refiner | None" = None,
                    translator_worker: "TranslationWorker | None" = None,
-                   speaker_labeler=None) -> int:
+                   speaker_labeler=None,
+                   overlap_session: JapaneseOverlapSession | None = None) -> int:
     drained = 0
     while not vad.empty():
         segment = vad.front
         seg_end_time = time.perf_counter()  # segment-end reference point for latency
-        samples = np.asarray(segment.samples, dtype=np.float32)
-        seg_start, seg_end = segment.start, segment.start + len(samples)
-        if history is not None:
+        speech_samples = np.asarray(segment.samples, dtype=np.float32)
+        seg_start, seg_end = segment.start, segment.start + len(speech_samples)
+        audio_overlap_s = 0.0
+        if history is not None and overlap_session is not None:
+            window = overlap_session.build_window(
+                history, seg_start, seg_end, speech_samples)
+            samples = window.samples
+            audio_overlap_s = window.overlap_with_previous_s
+        else:
+            samples = speech_samples
+        if history is not None and overlap_session is None:
             samples = history.with_preroll(seg_start, samples)
         vad.pop()
         drained += 1
@@ -226,7 +325,30 @@ def drain_segments(vad, sample_rate: int, asr: RoutedASR, stats: SessionStats,
                                 speech_s=raw_speech_s)
         latency_ms = (time.perf_counter() - seg_end_time) * 1000
 
+        raw_text = result["text"]
+        overlap_output = None
+        if overlap_session is not None:
+            overlap_output = overlap_session.merge_text(raw_text, audio_overlap_s)
+            result["text"] = overlap_output.text
+            if overlap_output.merge is not None and overlap_output.merge.applied:
+                stats.overlap_merges += 1
+        stats.input_window_s.append(seg_s)
+
         if not result["text"].strip():
+            # A fully duplicated overlapping window legitimately has an
+            # empty delta.  Keep its opt-in event observable so raw_text is
+            # never lost; legacy non-overlap silence remains suppressed.
+            if (overlap_output is not None and raw_text.strip()
+                    and printer.server is not None):
+                stats.segments += 1
+                stats.latencies_ms.append(latency_ms)
+                printer.clear()
+                printer.server.final(
+                    "", result["lang"], "", latency_ms,
+                    result.get("tier", ""),
+                    raw_text=overlap_output.raw_text,
+                    merged_context_text=overlap_output.merged_context_text,
+                )
             continue  # non-speech (jingle/SFX): no line, no speaker, no span
 
         speaker = ""
@@ -237,8 +359,16 @@ def drain_segments(vad, sample_rate: int, asr: RoutedASR, stats: SessionStats,
         stats.latencies_ms.append(latency_ms)
         printer.clear()
         if printer.server is not None:
-            printer.server.final(result["text"], result["lang"], speaker.rstrip("|"),
-                                 latency_ms, result.get("tier", ""))
+            if overlap_output is None:
+                printer.server.final(result["text"], result["lang"], speaker.rstrip("|"),
+                                     latency_ms, result.get("tier", ""))
+            else:
+                printer.server.final(
+                    result["text"], result["lang"], speaker.rstrip("|"),
+                    latency_ms, result.get("tier", ""),
+                    raw_text=overlap_output.raw_text,
+                    merged_context_text=overlap_output.merged_context_text,
+                )
         probe_part = f", probe={result['probe_ms']:.0f}ms" if result.get("probe_ms") else ""
         print(f"[{speaker}{result['lang']}/{result.get('tier', '?')}] {result['text']}  "
               f"(seg={seg_s:.1f}s, lid={result['lid_ms']:.0f}ms{probe_part}, "
@@ -588,7 +718,8 @@ def run_stream(chunks, vad, sample_rate: int, asr: RoutedASR, stats: SessionStat
                printer: PartialPrinter, refiner: "Refiner | None" = None,
                history: AudioHistory | None = None,
                translator_worker: "TranslationWorker | None" = None,
-               speaker_labeler=None):
+               speaker_labeler=None,
+               overlap_session: JapaneseOverlapSession | None = None):
     audio_pos = 0.0
     last_partial = 0.0
     early_lang = None  # LID result computed mid-utterance so finals skip it
@@ -603,7 +734,8 @@ def run_stream(chunks, vad, sample_rate: int, asr: RoutedASR, stats: SessionStat
             if drain_segments(vad, sample_rate, asr, stats, printer, history, early_lang,
                               refiner=refiner,
                               translator_worker=translator_worker,
-                              speaker_labeler=speaker_labeler):
+                              speaker_labeler=speaker_labeler,
+                              overlap_session=overlap_session):
                 early_lang = None
             if refiner is not None:
                 refiner.maybe_refine(int(audio_pos * sample_rate), force=True)
@@ -631,7 +763,8 @@ def run_stream(chunks, vad, sample_rate: int, asr: RoutedASR, stats: SessionStat
         if drain_segments(vad, sample_rate, asr, stats, printer, history, early_lang,
                           refiner=refiner,
                           translator_worker=translator_worker,
-                          speaker_labeler=speaker_labeler):
+                          speaker_labeler=speaker_labeler,
+                          overlap_session=overlap_session):
             early_lang = None
         if refiner is not None and not vad.is_speech_detected():
             refiner.maybe_refine(int(audio_pos * sample_rate))
@@ -678,6 +811,22 @@ def main():
     ap.add_argument("--lang", metavar="CODE", default=None,
                     help="required by --mode single: force every segment to this language "
                          "code, skipping LID and switch logic entirely")
+    ap.add_argument("--ja-config", default=DEFAULT_JAPANESE_CONFIG, metavar="PATH",
+                    help="Japanese profile config (default configs/japanese.default.json)")
+    ja_overlap = ap.add_mutually_exclusive_group()
+    ja_overlap.add_argument("--ja-overlap", dest="ja_overlap", action="store_true",
+                            help="enable experimental PR 2 boundary context and text merging")
+    ja_overlap.add_argument("--no-ja-overlap", dest="ja_overlap", action="store_false",
+                            help="disable PR 2 boundary context and text overlap merging")
+    ap.set_defaults(ja_overlap=None)
+    ap.add_argument("--ja-pre-context", type=float, default=None, metavar="SEC",
+                    help="override Japanese config pre-context for evaluation")
+    ap.add_argument("--ja-post-context", type=float, default=None, metavar="SEC",
+                    help="override Japanese config post-context for evaluation")
+    ap.add_argument("--ja-max-overlap", type=float, default=None, metavar="SEC",
+                    help="override Japanese config maximum audio overlap")
+    ap.add_argument("--ja-merge-similarity", type=float, default=None, metavar="RATIO",
+                    help="override Japanese config text merge similarity threshold")
     ap.add_argument("--lang-switch-guard", type=float, default=None, metavar="SEC",
                     help="treat a new-language detection shorter than SEC as noise: it never "
                          "counts toward confirming a switch (see --lid-switch-confirm) and it "
@@ -722,6 +871,19 @@ def main():
         args.lang_switch_guard = default_guard
     if args.lid_switch_confirm is None:
         args.lid_switch_confirm = default_confirm
+    try:
+        overlap_settings = resolve_japanese_overlap_settings(
+            mode=args.mode,
+            lang=args.lang,
+            config_path=args.ja_config,
+            enabled_override=args.ja_overlap,
+            pre_context_s=args.ja_pre_context,
+            post_context_s=args.ja_post_context,
+            max_overlap_s=args.ja_max_overlap,
+            min_similarity=args.ja_merge_similarity,
+        )
+    except ValueError as exc:
+        ap.error(str(exc))
 
     server = None
     if args.serve:
@@ -735,6 +897,12 @@ def main():
     profile = startup_profile(args.mode, args.lang)
     if profile is not None:
         print(profile, file=sys.stderr)
+    if overlap_settings is not None:
+        print("boundary_overlap=enabled "
+              f"pre={overlap_settings.pre_context_s:g}s "
+              f"post={overlap_settings.post_context_s:g}s "
+              f"max_overlap={overlap_settings.max_overlap_s:g}s "
+              f"similarity={overlap_settings.min_similarity:g}", file=sys.stderr)
     asr = RoutedASR(threads=args.threads,
                     preload=(args.mode != "single"),
                     max_resident=args.max_resident if args.max_resident > 0 else None,
@@ -762,6 +930,9 @@ def main():
             translator_worker = TranslationWorker(translators, server=server)
 
     history = AudioHistory(SAMPLE_RATE)
+    overlap_session = (JapaneseOverlapSession(
+        overlap_settings, SAMPLE_RATE, args.max_speech)
+        if overlap_settings is not None else None)
     refiner = None if args.no_refine else Refiner(asr, history, SAMPLE_RATE, printer,
                                                   transcript_path=args.transcript,
                                                   translators=translators, stats=stats)
@@ -771,7 +942,8 @@ def main():
         drain_segments(vad, sr, asr, stats, printer, history,
                        refiner=refiner,
                        translator_worker=translator_worker,
-                       speaker_labeler=speaker_labeler)
+                       speaker_labeler=speaker_labeler,
+                       overlap_session=overlap_session)
         if refiner is not None:
             refiner.maybe_refine(0, force=True)
 
@@ -786,7 +958,7 @@ def main():
             samples, sr = read_wave(args.wav)  # resampled to SAMPLE_RATE if needed
             run_stream(wav_chunks(samples, sr, realtime=not args.no_realtime),
                        vad, sr, asr, stats, printer, refiner, history, translator_worker,
-                       speaker_labeler)
+                       speaker_labeler, overlap_session)
             finish(sr)
         elif input_mode == "ws":
             from ws_ingest import INGEST_PATH, IngestServer
@@ -796,10 +968,10 @@ def main():
             print(f"ws ingest: ws://{args.ws_host}:{args.ws_port}{INGEST_PATH}  "
                   f"(JSON handshake, then binary pcm_s16le frames)", file=sys.stderr)
             run_stream(ws_chunks(ingest), vad, SAMPLE_RATE, asr, stats, printer, refiner,
-                       history, translator_worker, speaker_labeler)
+                       history, translator_worker, speaker_labeler, overlap_session)
         else:
             run_stream(mic_chunks(), vad, SAMPLE_RATE, asr, stats, printer, refiner, history,
-                       translator_worker, speaker_labeler)
+                       translator_worker, speaker_labeler, overlap_session)
     except KeyboardInterrupt:
         finish(SAMPLE_RATE)
     finally:

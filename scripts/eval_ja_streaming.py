@@ -15,7 +15,7 @@ import platform
 import sys
 import time
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Iterable
@@ -26,6 +26,7 @@ from eval_common import (abnormal_repetition, digits_exact, edit_counts,
 
 ROOT = Path(__file__).resolve().parent.parent
 MODELS_DIR = ROOT / "models"
+DEFAULT_JAPANESE_CONFIG = ROOT / "configs" / "japanese.default.json"
 DEFAULT_MODES = ("offline_primary", "stream_fast", "stream_refine", "stream_single_ja")
 REQUIRED_FIELDS = ("id", "wav", "text", "category")
 OPTIONAL_LIST_FIELDS = ("terms", "digits")
@@ -125,6 +126,8 @@ class DecodeOutput:
     final_latencies_ms: list[float]
     max_rss_bytes: int
     segments: int = 1
+    input_window_s: list[float] = field(default_factory=list)
+    overlap_merges: int = 0
 
 
 class _CaptureServer:
@@ -132,8 +135,14 @@ class _CaptureServer:
         self.finals: list[dict[str, Any]] = []
         self.refines: list[dict[str, Any]] = []
 
-    def final(self, text, lang, speaker, latency_ms, tier):
-        self.finals.append({"text": text, "lang": lang, "latency_ms": latency_ms, "tier": tier})
+    def final(self, text, lang, speaker, latency_ms, tier,
+              raw_text=None, merged_context_text=None):
+        event = {"text": text, "lang": lang, "latency_ms": latency_ms, "tier": tier}
+        if raw_text is not None:
+            event["raw_text"] = raw_text
+        if merged_context_text is not None:
+            event["merged_context_text"] = merged_context_text
+        self.finals.append(event)
 
     def publish(self, event):
         if event.get("type") == "refine":
@@ -151,12 +160,14 @@ def _rss_bytes() -> int:
 class Evaluator:
     """Model-backed evaluator that reuses the production ASR/VAD pipeline."""
 
-    def __init__(self, threads: int, min_silence: float, max_speech: float):
+    def __init__(self, threads: int, min_silence: float, max_speech: float,
+                 japanese_overlap_settings=None):
         from asr_engine import RoutedASR
 
         self.threads = threads
         self.min_silence = min_silence
         self.max_speech = max_speech
+        self.japanese_overlap_settings = japanese_overlap_settings
         # Match the production CLI: model/LID warmup happens before measured
         # audio, while background preload stays off to keep eval timing stable.
         common = dict(threads=threads, warmup=True, preload=False, max_resident=3)
@@ -190,9 +201,9 @@ class Evaluator:
         return self._refiner
 
     def stream(self, wav_path: str, *, refine: bool, single_ja: bool) -> DecodeOutput:
-        from realtime_transcribe import (AudioHistory, PartialPrinter, Refiner, SessionStats,
-                                         build_vad, drain_segments, read_wave, run_stream,
-                                         wav_chunks)
+        from realtime_transcribe import (AudioHistory, JapaneseOverlapSession, PartialPrinter,
+                                         Refiner, SessionStats, build_vad, drain_segments,
+                                         read_wave, run_stream, wav_chunks)
 
         samples, sample_rate = read_wave(wav_path)
         asr = self.asr
@@ -204,6 +215,10 @@ class Evaluator:
         capture = _CaptureServer()
         printer = PartialPrinter(enabled=False, server=capture)
         history = AudioHistory(sample_rate)
+        overlap_session = None
+        if single_ja and self.japanese_overlap_settings is not None:
+            overlap_session = JapaneseOverlapSession(
+                self.japanese_overlap_settings, sample_rate, self.max_speech)
         refiner = None
         if refine:
             refiner = self._prepare_refiner(
@@ -212,9 +227,11 @@ class Evaluator:
         started = time.perf_counter()
         try:
             run_stream(wav_chunks(samples, sample_rate, realtime=False), vad, sample_rate, asr,
-                       stats, printer, refiner, history)
+                       stats, printer, refiner, history,
+                       overlap_session=overlap_session)
             vad.flush()
-            drain_segments(vad, sample_rate, asr, stats, printer, history, refiner=refiner)
+            drain_segments(vad, sample_rate, asr, stats, printer, history, refiner=refiner,
+                           overlap_session=overlap_session)
             if refiner is not None:
                 refiner.maybe_refine(0, force=True)
                 refiner._task_queue.join()
@@ -224,7 +241,8 @@ class Evaluator:
         events = capture.refines if refine and capture.refines else capture.finals
         text = "\n".join(event["text"] for event in events if event.get("text", "").strip())
         return DecodeOutput(text, len(samples) / sample_rate, elapsed_ms,
-                            list(stats.latencies_ms), max(before, _rss_bytes()), stats.segments)
+                            list(stats.latencies_ms), max(before, _rss_bytes()), stats.segments,
+                            list(stats.input_window_s), stats.overlap_merges)
 
     def decode(self, mode: str, wav_path: str) -> DecodeOutput:
         if mode == "offline_primary":
@@ -276,6 +294,7 @@ def score_hypotheses(entries: list[dict[str, Any]], hypotheses: list[dict[str, A
               if precision is not None and recall is not None and precision + recall else None)
         digit_rows = [row for row in rows if row["digits_evaluated"]]
         latencies = [value for row in rows for value in row.get("final_latencies_ms", [])]
+        input_windows = [value for row in rows for value in row.get("input_window_s", [])]
         audio_s = sum(row["audio_s"] for row in rows)
         decode_s = sum(row["decode_ms"] for row in rows) / 1000
         return {
@@ -293,6 +312,9 @@ def score_hypotheses(entries: list[dict[str, Any]], hypotheses: list[dict[str, A
             "decode_latency_ms_p95": percentile([row["decode_ms"] for row in rows], 0.95),
             "final_latency_ms_p50": percentile(latencies, 0.50),
             "final_latency_ms_p95": percentile(latencies, 0.95),
+            "mean_input_window_s": (sum(input_windows) / len(input_windows)
+                                    if input_windows else None),
+            "overlap_merges": sum(row.get("overlap_merges", 0) for row in rows),
             "max_rss_bytes": max((row.get("max_rss_bytes", 0) for row in rows), default=0),
             "empty_rate": sum(not row["text"].strip() for row in rows) / len(rows) if rows else 0.0,
             "abnormal_repetition_rate": (sum(bool(row["abnormal_repetition"]) for row in rows)
@@ -313,8 +335,8 @@ def score_hypotheses(entries: list[dict[str, Any]], hypotheses: list[dict[str, A
 
 def render_markdown(metrics: dict[str, Any], hypotheses: list[dict[str, Any]]) -> str:
     lines = ["# Japanese Streaming ASR Evaluation", "", "## Overall", "",
-             "| mode | samples | CER | S / D / I | term P / R / F1 | digits exact | RTF | p50 / p95 final ms | empty | repeat | max RSS MiB |",
-             "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|"]
+             "| mode | samples | CER | S / D / I | term P / R / F1 | digits exact | RTF | p50 / p95 final ms | mean window s | merges | empty | repeat | max RSS MiB |",
+             "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|"]
 
     def pct(value):
         return "n/a" if value is None else f"{100 * value:.2f}%"
@@ -330,6 +352,7 @@ def render_markdown(metrics: dict[str, Any], hypotheses: list[dict[str, Any]]) -
             f"{pct(item['term_precision'])} / {pct(item['term_recall'])} / {pct(item['term_f1'])} | "
             f"{pct(item['digits_exact_rate'])} | {item['rtf']:.4f} | "
             f"{num(item['final_latency_ms_p50'])} / {num(item['final_latency_ms_p95'])} | "
+            f"{num(item['mean_input_window_s'])} | {item['overlap_merges']} | "
             f"{pct(item['empty_rate'])} | {pct(item['abnormal_repetition_rate'])} | "
             f"{item['max_rss_bytes'] / 1024 / 1024:.1f} |")
     lines += ["", "## Category breakdown", "",
@@ -376,6 +399,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--threads", type=int, default=4)
     parser.add_argument("--min-silence", type=float, default=0.35)
     parser.add_argument("--max-speech", type=float, default=12.0)
+    parser.add_argument("--ja-config", default=str(DEFAULT_JAPANESE_CONFIG))
+    overlap_group = parser.add_mutually_exclusive_group()
+    overlap_group.add_argument("--ja-overlap", dest="ja_overlap", action="store_true")
+    overlap_group.add_argument("--no-ja-overlap", dest="ja_overlap", action="store_false")
+    parser.set_defaults(ja_overlap=None)
+    parser.add_argument("--ja-pre-context", type=float, default=None)
+    parser.add_argument("--ja-post-context", type=float, default=None)
+    parser.add_argument("--ja-max-overlap", type=float, default=None)
+    parser.add_argument("--ja-merge-similarity", type=float, default=None)
     args = parser.parse_args(argv)
     try:
         entries = load_manifest(args.manifest)
@@ -385,7 +417,19 @@ def main(argv: list[str] | None = None) -> int:
     if not available:
         print("integration evaluation skipped; missing: " + ", ".join(missing), file=sys.stderr)
         return 0
-    evaluator = Evaluator(args.threads, args.min_silence, args.max_speech)
+    from realtime_transcribe import resolve_japanese_overlap_settings
+    try:
+        overlap_settings = resolve_japanese_overlap_settings(
+            mode="single", lang="ja", config_path=args.ja_config,
+            enabled_override=args.ja_overlap,
+            pre_context_s=args.ja_pre_context,
+            post_context_s=args.ja_post_context,
+            max_overlap_s=args.ja_max_overlap,
+            min_similarity=args.ja_merge_similarity,
+        )
+    except ValueError as exc:
+        parser.error(str(exc))
+    evaluator = Evaluator(args.threads, args.min_silence, args.max_speech, overlap_settings)
     hypotheses: list[dict[str, Any]] = []
     for entry in entries:
         if not Path(entry["wav_path"]).is_file():
@@ -401,13 +445,17 @@ def main(argv: list[str] | None = None) -> int:
                 "audio_s": decoded.audio_s, "decode_ms": decoded.decode_ms,
                 "final_latencies_ms": decoded.final_latencies_ms,
                 "max_rss_bytes": decoded.max_rss_bytes, "segments": decoded.segments,
+                "input_window_s": decoded.input_window_s,
+                "overlap_merges": decoded.overlap_merges,
             })
             print(f"[{entry['id']}/{mode}] {decoded.text}")
     metrics = score_hypotheses(entries, hypotheses, args.modes)
     metrics["environment"] = environment_metadata()
     metrics["settings"] = {"threads": args.threads, "min_silence": args.min_silence,
                            "max_speech": args.max_speech, "modes": args.modes,
-                           "manifest_sha256": _file_sha256(Path(args.manifest))}
+                           "manifest_sha256": _file_sha256(Path(args.manifest)),
+                           "japanese_overlap": (asdict(overlap_settings)
+                                                if overlap_settings is not None else None)}
     scored = []
     by_id = {entry["id"]: entry for entry in entries}
     for row in hypotheses:

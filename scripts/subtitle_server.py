@@ -104,9 +104,18 @@ class SubtitleServer:
         self.publish({"type": "partial", "text": text})
 
     def final(self, text: str, lang: str = "", speaker: str = "",
-              latency_ms: float | None = None, tier: str = ""):
-        self.publish({"type": "final", "text": text, "lang": lang,
-                      "speaker": speaker, "latency_ms": latency_ms, "tier": tier})
+              latency_ms: float | None = None, tier: str = "",
+              raw_text: str | None = None,
+              merged_context_text: str | None = None):
+        event = {"type": "final", "text": text, "lang": lang,
+                 "speaker": speaker, "latency_ms": latency_ms, "tier": tier}
+        # Optional PR 2 fields keep legacy event shape byte-for-byte in modes
+        # that do not enable overlapping Japanese windows.
+        if raw_text is not None:
+            event["raw_text"] = raw_text
+        if merged_context_text is not None:
+            event["merged_context_text"] = merged_context_text
+        self.publish(event)
 
     def subscribe(self) -> queue.Queue:
         """Register a new consumer; past `refine` events are replayed first.
