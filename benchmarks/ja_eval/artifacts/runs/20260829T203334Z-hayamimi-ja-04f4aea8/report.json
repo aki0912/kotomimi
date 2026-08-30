@@ -1,0 +1,534 @@
+{
+  "artifacts": {
+    "hypotheses_sha256": "22155205ee46b312ae08b5b27400a5c062ae5dbe8229c3fe1b1a2b61ef01ed44"
+  },
+  "data_provenance": {
+    "common_voice_ja_26": {
+      "attribution": {
+        "creator": "Mozilla Foundation / Common Voice contributors",
+        "dataset_id": "common_voice_ja_26",
+        "required": false,
+        "source_url": "https://mozilladatacollective.com/datasets/cmqim4lxy00tunr07cjkcupeg",
+        "spdx": "CC0-1.0",
+        "title": "Common Voice Scripted Speech 26.0 - Japanese"
+      },
+      "audit_status": "not-run",
+      "license_policy": "strict",
+      "license_spdx": "CC0-1.0",
+      "prepared_lock_sha256": "87352287293cfb7f98ea8d6408a924a2435ed9b314f4c29850a28fc1a511a09e",
+      "prepared_manifest_sha256": "0497e82fbb3d4a82f2876108cfbad9c850a16a98b803ef2924c6b2b25996b19e",
+      "selected_count": 1000,
+      "source_release": "cv-corpus-26.0-2026-06-12",
+      "source_revision": null,
+      "source_split": "test",
+      "version": "26.0"
+    },
+    "fleurs_ja": {
+      "attribution": {
+        "creator": "Google",
+        "dataset_id": "fleurs_ja",
+        "required": true,
+        "source_url": "https://huggingface.co/datasets/google/fleurs",
+        "spdx": "CC-BY-4.0",
+        "title": "FLEURS - Japanese"
+      },
+      "audit_status": "not-run",
+      "license_policy": "strict",
+      "license_spdx": "CC-BY-4.0",
+      "prepared_lock_sha256": "d4b95bdd6c5b9bd849b47fe38b31880b27314c643f2fb57c7aad1af95cf6c7b5",
+      "prepared_manifest_sha256": "2ea73137377569b052f0e9228c1d36fb3eb9b62acc297d65ae65398f4f1844b8",
+      "selected_count": 300,
+      "source_release": null,
+      "source_revision": "70bb2e84b976b7e960aa89f1c648e09c59f894dd",
+      "source_split": "test",
+      "version": "70bb2e84b976b7e960aa89f1c648e09c59f894dd"
+    }
+  },
+  "datasets": {
+    "common_voice_ja_26": {
+      "audio_s": 4761.468000000002,
+      "decode_failures": 0,
+      "decode_s": 45.85094236113946,
+      "latency_ms_p50": 41.39912499522325,
+      "latency_ms_p95": 85.74840479413977,
+      "normalized": {
+        "cer": 0.24151052454120708,
+        "deletions": 2739,
+        "insertions": 418,
+        "reference_chars": 20761,
+        "substitutions": 1857
+      },
+      "peak_rss_bytes": 594673664,
+      "raw": {
+        "cer": 0.28968504647594984,
+        "deletions": 4043,
+        "insertions": 381,
+        "reference_chars": 22162,
+        "substitutions": 1996
+      },
+      "rtf": 0.009629581121019703,
+      "samples": 1000,
+      "sentence_exact_rate": 0.37
+    },
+    "fleurs_ja": {
+      "audio_s": 3936.479999999999,
+      "decode_failures": 0,
+      "decode_s": 34.39707437943434,
+      "latency_ms_p50": 109.47945849329699,
+      "latency_ms_p95": 168.08078570902583,
+      "normalized": {
+        "cer": 0.08956810631229235,
+        "deletions": 443,
+        "insertions": 163,
+        "reference_chars": 15050,
+        "substitutions": 742
+      },
+      "peak_rss_bytes": 785219584,
+      "raw": {
+        "cer": 0.14775758327647168,
+        "deletions": 1428,
+        "insertions": 133,
+        "reference_chars": 16121,
+        "substitutions": 821
+      },
+      "rtf": 0.008738028487235894,
+      "samples": 300,
+      "sentence_exact_rate": 0.20666666666666667
+    }
+  },
+  "environment": {
+    "machine": "arm64",
+    "os": "Darwin",
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "python": "3.11.9",
+    "threads": 4
+  },
+  "failures": [],
+  "metrics": {
+    "dataset_macro_cer": 0.1655393154267497,
+    "decode_failures": 0,
+    "deletions": 3182,
+    "insertions": 581,
+    "normalized_micro_cer": 0.1776549105023596,
+    "p50_latency_ms": 48.37702101212926,
+    "p95_latency_ms": 136.9974389555864,
+    "peak_rss_bytes": 785219584,
+    "raw_micro_cer": 0.2299192853224669,
+    "reference_chars": 35811,
+    "rtf": 0.009226086053926033,
+    "sentence_exact_rate": 0.3323076923076923,
+    "substitutions": 2599
+  },
+  "qc": {
+    "flagged_samples": 109,
+    "view": "official"
+  },
+  "run_id": "20260829T203334Z-hayamimi-ja-04f4aea8",
+  "schema_version": 1,
+  "subsets": {
+    "digits": {
+      "digit-containing": {
+        "audio_s": 1459.9199999999996,
+        "decode_failures": 0,
+        "decode_s": 12.803413040062878,
+        "latency_ms_p50": 116.64933399879374,
+        "latency_ms_p95": 205.6613122083945,
+        "normalized": {
+          "cer": 0.13781877373846987,
+          "deletions": 217,
+          "insertions": 84,
+          "reference_chars": 5529,
+          "substitutions": 461
+        },
+        "peak_rss_bytes": 785219584,
+        "raw": {
+          "cer": 0.19623655913978494,
+          "deletions": 597,
+          "insertions": 61,
+          "reference_chars": 5952,
+          "substitutions": 510
+        },
+        "rtf": 0.00876994153108587,
+        "samples": 103,
+        "sentence_exact_rate": 0.0
+      },
+      "no-ascii-digits": {
+        "audio_s": 7238.028000000001,
+        "decode_failures": 0,
+        "decode_s": 67.44460370051092,
+        "latency_ms_p50": 45.57370801921934,
+        "latency_ms_p95": 123.11169959139079,
+        "normalized": {
+          "cer": 0.18492834026814609,
+          "deletions": 2965,
+          "insertions": 497,
+          "reference_chars": 30282,
+          "substitutions": 2138
+        },
+        "peak_rss_bytes": 785219584,
+        "raw": {
+          "cer": 0.23612013238068727,
+          "deletions": 4874,
+          "insertions": 453,
+          "reference_chars": 32331,
+          "substitutions": 2307
+        },
+        "rtf": 0.009318091018784525,
+        "samples": 1197,
+        "sentence_exact_rate": 0.3609022556390977
+      }
+    },
+    "duration": {
+      "long": {
+        "audio_s": 5075.375999999995,
+        "decode_failures": 0,
+        "decode_s": 44.439214458310744,
+        "latency_ms_p50": 99.642187502468,
+        "latency_ms_p95": 163.3844852898619,
+        "normalized": {
+          "cer": 0.10889703753739265,
+          "deletions": 809,
+          "insertions": 273,
+          "reference_chars": 20726,
+          "substitutions": 1175
+        },
+        "peak_rss_bytes": 785219584,
+        "raw": {
+          "cer": 0.1671013580357946,
+          "deletions": 2202,
+          "insertions": 215,
+          "reference_chars": 22238,
+          "substitutions": 1299
+        },
+        "rtf": 0.008755846750725618,
+        "samples": 414,
+        "sentence_exact_rate": 0.18115942028985507
+      },
+      "medium": {
+        "audio_s": 2977.4400000000032,
+        "decode_failures": 0,
+        "decode_s": 28.47364645844209,
+        "latency_ms_p50": 45.12720799539238,
+        "latency_ms_p95": 67.07207479630597,
+        "normalized": {
+          "cer": 0.1839246307927347,
+          "deletions": 972,
+          "insertions": 234,
+          "reference_chars": 11782,
+          "substitutions": 961
+        },
+        "peak_rss_bytes": 785219584,
+        "raw": {
+          "cer": 0.23356442744441788,
+          "deletions": 1683,
+          "insertions": 211,
+          "reference_chars": 12549,
+          "substitutions": 1037
+        },
+        "rtf": 0.009563130225442681,
+        "samples": 609,
+        "sentence_exact_rate": 0.4006568144499179
+      },
+      "short": {
+        "audio_s": 645.1320000000005,
+        "decode_failures": 0,
+        "decode_s": 7.335155823820969,
+        "latency_ms_p50": 27.078915998572484,
+        "latency_ms_p95": 31.73497460084036,
+        "normalized": {
+          "cer": 0.5867393278837421,
+          "deletions": 1401,
+          "insertions": 74,
+          "reference_chars": 3303,
+          "substitutions": 463
+        },
+        "peak_rss_bytes": 594673664,
+        "raw": {
+          "cer": 0.6164187643020596,
+          "deletions": 1586,
+          "insertions": 88,
+          "reference_chars": 3496,
+          "substitutions": 481
+        },
+        "rtf": 0.01137000772527322,
+        "samples": 277,
+        "sentence_exact_rate": 0.40794223826714804
+      }
+    },
+    "gender": {
+      "do_not_wish_to_say": {
+        "audio_s": 11.196,
+        "decode_failures": 0,
+        "decode_s": 0.12077166698873043,
+        "latency_ms_p50": 30.332103997352533,
+        "latency_ms_p95": 42.77138386241859,
+        "normalized": {
+          "cer": 0.4358974358974359,
+          "deletions": 12,
+          "insertions": 1,
+          "reference_chars": 39,
+          "substitutions": 4
+        },
+        "peak_rss_bytes": 594575360,
+        "raw": {
+          "cer": 0.4634146341463415,
+          "deletions": 14,
+          "insertions": 1,
+          "reference_chars": 41,
+          "substitutions": 4
+        },
+        "rtf": 0.010787037065803005,
+        "samples": 4,
+        "sentence_exact_rate": 0.25
+      },
+      "female": {
+        "audio_s": 539.3399999999999,
+        "decode_failures": 0,
+        "decode_s": 4.72943529006443,
+        "latency_ms_p50": 122.32012499589473,
+        "latency_ms_p95": 199.26402539713305,
+        "normalized": {
+          "cer": 0.07011686143572621,
+          "deletions": 46,
+          "insertions": 24,
+          "reference_chars": 1797,
+          "substitutions": 56
+        },
+        "peak_rss_bytes": 785219584,
+        "raw": {
+          "cer": 0.1265625,
+          "deletions": 159,
+          "insertions": 17,
+          "reference_chars": 1920,
+          "substitutions": 67
+        },
+        "rtf": 0.008768931082553548,
+        "samples": 37,
+        "sentence_exact_rate": 0.2972972972972973
+      },
+      "female_feminine": {
+        "audio_s": 686.4839999999998,
+        "decode_failures": 0,
+        "decode_s": 6.67897937586531,
+        "latency_ms_p50": 38.10787497786805,
+        "latency_ms_p95": 80.0304392570979,
+        "normalized": {
+          "cer": 0.294010889292196,
+          "deletions": 667,
+          "insertions": 66,
+          "reference_chars": 3306,
+          "substitutions": 239
+        },
+        "peak_rss_bytes": 594673664,
+        "raw": {
+          "cer": 0.3431952662721893,
+          "deletions": 898,
+          "insertions": 67,
+          "reference_chars": 3549,
+          "substitutions": 253
+        },
+        "rtf": 0.009729257165302195,
+        "samples": 158,
+        "sentence_exact_rate": 0.43037974683544306
+      },
+      "male": {
+        "audio_s": 3397.14,
+        "decode_failures": 0,
+        "decode_s": 29.667639089369914,
+        "latency_ms_p50": 107.92099998798221,
+        "latency_ms_p95": 163.15885829390027,
+        "normalized": {
+          "cer": 0.09220553836867125,
+          "deletions": 397,
+          "insertions": 139,
+          "reference_chars": 13253,
+          "substitutions": 686
+        },
+        "peak_rss_bytes": 785219584,
+        "raw": {
+          "cer": 0.15062319554960918,
+          "deletions": 1269,
+          "insertions": 116,
+          "reference_chars": 14201,
+          "substitutions": 754
+        },
+        "rtf": 0.008733122299749176,
+        "samples": 263,
+        "sentence_exact_rate": 0.19391634980988592
+      },
+      "male_masculine": {
+        "audio_s": 711.5640000000005,
+        "decode_failures": 0,
+        "decode_s": 6.880594333895715,
+        "latency_ms_p50": 39.74052099511027,
+        "latency_ms_p95": 84.77649564301828,
+        "normalized": {
+          "cer": 0.39621087314662273,
+          "deletions": 958,
+          "insertions": 60,
+          "reference_chars": 3642,
+          "substitutions": 425
+        },
+        "peak_rss_bytes": 594673664,
+        "raw": {
+          "cer": 0.43459264970444617,
+          "deletions": 1186,
+          "insertions": 57,
+          "reference_chars": 3891,
+          "substitutions": 448
+        },
+        "rtf": 0.00966967740624274,
+        "samples": 150,
+        "sentence_exact_rate": 0.2866666666666667
+      },
+      "unknown": {
+        "audio_s": 3352.223999999997,
+        "decode_failures": 0,
+        "decode_s": 32.170596984389704,
+        "latency_ms_p50": 42.274979496141896,
+        "latency_ms_p95": 87.08195417420937,
+        "normalized": {
+          "cer": 0.18745462465514737,
+          "deletions": 1102,
+          "insertions": 291,
+          "reference_chars": 13774,
+          "substitutions": 1189
+        },
+        "peak_rss_bytes": 594673664,
+        "raw": {
+          "cer": 0.23785845650841222,
+          "deletions": 1945,
+          "insertions": 256,
+          "reference_chars": 14681,
+          "substitutions": 1291
+        },
+        "rtf": 0.00959679215481714,
+        "samples": 688,
+        "sentence_exact_rate": 0.375
+      }
+    },
+    "latin": {
+      "latin-containing": {
+        "audio_s": 517.02,
+        "decode_failures": 0,
+        "decode_s": 4.582597792032175,
+        "latency_ms_p50": 111.86800000723451,
+        "latency_ms_p95": 208.86732891085563,
+        "normalized": {
+          "cer": 0.15933806146572105,
+          "deletions": 113,
+          "insertions": 24,
+          "reference_chars": 2115,
+          "substitutions": 200
+        },
+        "peak_rss_bytes": 785186816,
+        "raw": {
+          "cer": 0.23881893182805036,
+          "deletions": 271,
+          "insertions": 30,
+          "reference_chars": 2303,
+          "substitutions": 249
+        },
+        "rtf": 0.008863482635163388,
+        "samples": 39,
+        "sentence_exact_rate": 0.1794871794871795
+      },
+      "no-latin": {
+        "audio_s": 8180.927999999996,
+        "decode_failures": 0,
+        "decode_s": 75.66541894854163,
+        "latency_ms_p50": 47.66258399467915,
+        "latency_ms_p95": 132.76195799699053,
+        "normalized": {
+          "cer": 0.17880460588793923,
+          "deletions": 3069,
+          "insertions": 557,
+          "reference_chars": 33696,
+          "substitutions": 2399
+        },
+        "peak_rss_bytes": 785219584,
+        "raw": {
+          "cer": 0.22934963868816008,
+          "deletions": 5200,
+          "insertions": 484,
+          "reference_chars": 35980,
+          "substitutions": 2568
+        },
+        "rtf": 0.009249001940677348,
+        "samples": 1261,
+        "sentence_exact_rate": 0.3370340999206979
+      }
+    },
+    "qc": {
+      "flagged": {
+        "audio_s": 1118.7960000000003,
+        "decode_failures": 0,
+        "decode_s": 10.039098995970562,
+        "latency_ms_p50": 90.82045801915228,
+        "latency_ms_p95": 192.5596833985764,
+        "normalized": {
+          "cer": 0.2805420283717976,
+          "deletions": 969,
+          "insertions": 51,
+          "reference_chars": 4723,
+          "substitutions": 305
+        },
+        "peak_rss_bytes": 785219584,
+        "raw": {
+          "cer": 0.3377742946708464,
+          "deletions": 1310,
+          "insertions": 49,
+          "reference_chars": 5104,
+          "substitutions": 365
+        },
+        "rtf": 0.00897312735831247,
+        "samples": 109,
+        "sentence_exact_rate": 0.1926605504587156
+      },
+      "unflagged": {
+        "audio_s": 7579.151999999999,
+        "decode_failures": 0,
+        "decode_s": 70.20891774460324,
+        "latency_ms_p50": 47.32725000940263,
+        "latency_ms_p95": 128.46574999275617,
+        "normalized": {
+          "cer": 0.16202393206381885,
+          "deletions": 2213,
+          "insertions": 530,
+          "reference_chars": 31088,
+          "substitutions": 2294
+        },
+        "peak_rss_bytes": 785219584,
+        "raw": {
+          "cer": 0.2133277072847283,
+          "deletions": 4161,
+          "insertions": 465,
+          "reference_chars": 33179,
+          "substitutions": 2452
+        },
+        "rtf": 0.009263426534340946,
+        "samples": 1191,
+        "sentence_exact_rate": 0.345088161209068
+      }
+    }
+  },
+  "suite": {
+    "lock_sha256": "3fd1612874c2e9adb89b2fa4fc5f87fed47e6bdf2c436762429fa1e87d0cbc9e",
+    "manifest_sha256": "57890d1ed3e3dc761f4718293a431878e8f570b42a073d0a13285d89932b1204",
+    "name": "minimum-strict",
+    "version": 1
+  },
+  "system": {
+    "forced_lang": "ja",
+    "git_commit": "04f4aea874e3b6ed324c798f57324e447ff17644",
+    "git_dirty": false,
+    "id": "hayamimi-ja",
+    "model_files": {
+      "decoder-epoch-35-avg-1.int8.onnx": "sha256:d0179db78a2e65445c5c3dc41e94c62068fc539fe4e45060e32f438cca76432f",
+      "encoder-epoch-35-avg-1.int8.onnx": "sha256:ead1579e118b821a767242a8eb9272634b0e63ba16f8dfc4d126732406eae268",
+      "joiner-epoch-35-avg-1.int8.onnx": "sha256:c7f4ba40a8ae307a6c30b5c06e2570add04466bcb45bab62699f0ec5d00ed495",
+      "tokens.txt": "sha256:144f8a4f639373a1bdf7eabb2437482ef64b0cc5db24ad27cce65f293e4faa24"
+    },
+    "punctuate": false
+  }
+}
