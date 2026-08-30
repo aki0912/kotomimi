@@ -106,7 +106,8 @@ class SubtitleServer:
     def final(self, text: str, lang: str = "", speaker: str = "",
               latency_ms: float | None = None, tier: str = "",
               raw_text: str | None = None,
-              merged_context_text: str | None = None):
+              merged_context_text: str | None = None,
+              quality: dict | None = None):
         event = {"type": "final", "text": text, "lang": lang,
                  "speaker": speaker, "latency_ms": latency_ms, "tier": tier}
         # Optional PR 2 fields keep legacy event shape byte-for-byte in modes
@@ -115,6 +116,8 @@ class SubtitleServer:
             event["raw_text"] = raw_text
         if merged_context_text is not None:
             event["merged_context_text"] = merged_context_text
+        if quality is not None:
+            event["quality"] = quality
         self.publish(event)
 
     def subscribe(self) -> queue.Queue:

@@ -157,6 +157,7 @@ VAD境界へ前後コンテキストを加えるPR 2機能は、現時点では�
 | `--ja-post-context SEC` | 設定値 | 評価用にpost-contextを上書き |
 | `--ja-max-overlap SEC` | 設定値 | 評価用に音声overlap上限を上書き |
 | `--ja-merge-similarity RATIO` | 設定値 | 評価用に文字列統合の類似度閾値を上書き |
+| `--debug-quality` | オフ | final/refineイベントとstderrへ説明可能な`risk_score`を追加（confidenceではない） |
 | `--no-partial` | オフ | 発話中の速報字幕を無効化 |
 | `--min-silence SEC` | 0.35 | 発話終了とみなす無音時間。小さいほど確定が速くなるが分割も増える |
 | `--max-speech SEC` | 12.0 | 連続発話がこの秒数を超えたら強制的に確定させる |

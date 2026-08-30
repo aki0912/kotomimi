@@ -448,3 +448,19 @@ merge similarity 0.82で評価した。Refinerは実行していない。
 単一区間145件の出力は同一だった。ReazonSpeech放送音声15件では修正前の最良値
 （CER 13.402%、S/D/I=10/16/13、境界欠落2/2）を維持した。読み上げ中心の204件では
 受け入れ条件を満たしたが、自然会話の境界ケースが少ないため機能は引き続きopt-inとする。
+
+## 2026-08-30: PR 3 Quality Gate校正
+
+PR 2後の監査済みFLEURS日本語clean 204件を、上節と同じモデル・実行条件で
+`--quality-gate`付き評価した。ReazonSpeechが実際に返す`ys_log_probs`はconfidenceへ
+変換せず、segment平均が-0.22未満の場合をモデル固有のrisk signalとした。
+
+| group | 件数 | 比率 | CER |
+|---|---:|---:|---:|
+| high risk | 43 | 21.08% | 14.54% |
+| low risk | 161 | 78.92% | 7.14% |
+
+high risk群のCERはlow risk群の約2.04倍で、後段候補を20%前後へ絞る条件を満たした。
+放送音声15件では11件（73.33%）がhigh riskとなり、high/low CERは16.97% / 2.74%だった。
+BGM・自然会話では選別率が上がるため、この値を正解確率とは扱わず、詳細と制約は
+`docs/QUALITY_GATE.md`に記録した。

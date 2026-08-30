@@ -18,9 +18,12 @@ import os
 import sys
 import threading
 import time
+from dataclasses import replace
 
 import numpy as np
 import sherpa_onnx
+
+from japanese_types import DecodeResult
 
 MODELS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "models")
 V3_MODEL_DIR = os.path.join(MODELS_DIR, "sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8")
@@ -685,16 +688,48 @@ class RoutedASR:
         return self.lid.compute(stream)
 
     @staticmethod
-    def _decode_full(rec, samples: np.ndarray, sample_rate: int) -> tuple[str, str]:
+    def _decode_result(rec, samples: np.ndarray, sample_rate: int) -> DecodeResult:
         stream = rec.create_stream()
         stream.accept_waveform(sample_rate, samples)
         rec.decode_stream(stream)
-        text = stream.result.text
+        sherpa_result = stream.result
+        text = sherpa_result.text
         # ReazonSpeech models emit TV-subtitle annotation brackets around
         # boundary words; they carry no speech content.
         for junk in ("［", "］", "〈", "〉"):
             text = text.replace(junk, "")
-        return text, getattr(stream.result, "lang", "") or ""
+        lang = getattr(sherpa_result, "lang", "") or ""
+
+        def values(name: str, cast):
+            value = getattr(sherpa_result, name, None)
+            if value is None:
+                return ()
+            try:
+                return tuple(cast(item) for item in value)
+            except (TypeError, ValueError):
+                return ()
+
+        metadata = {}
+        for name in ("durations", "emotion", "event", "segment_durations",
+                     "segment_texts", "segment_timestamps", "words"):
+            value = getattr(sherpa_result, name, None)
+            if value not in (None, "", []):
+                metadata[name] = value
+        return DecodeResult(
+            raw_text=text,
+            text=text,
+            lang=lang,
+            tokens=values("tokens", str),
+            timestamps=values("timestamps", float),
+            token_log_probs=values("ys_log_probs", float),
+            metadata=metadata,
+        )
+
+    @classmethod
+    def _decode_full(cls, rec, samples: np.ndarray, sample_rate: int) -> tuple[str, str]:
+        """Compatibility wrapper for callers that still expect a tuple."""
+        result = cls._decode_result(rec, samples, sample_rate)
+        return result.raw_text, result.lang
 
     @classmethod
     def _decode(cls, rec, samples: np.ndarray, sample_rate: int) -> str:
@@ -839,7 +874,7 @@ class RoutedASR:
 
     def transcribe(self, samples: np.ndarray, sample_rate: int,
                    known_lang: str | None = None, speech_s: float | None = None,
-                   live: bool = True) -> dict:
+                   live: bool = True, structured: bool = False) -> dict:
         """live=False (e.g. the refine pass re-decoding past audio) must not
         touch the sticky/pending language state of the live stream."""
         if self.forced_lang is not None:
@@ -919,12 +954,26 @@ class RoutedASR:
                 )
 
         t0 = time.perf_counter()
+        decoded_result = None
+
+        def decode_selected(recognizer) -> str:
+            nonlocal decoded_result
+            structured_decoder = getattr(self, "_decode_result", None)
+            if structured_decoder is None or not hasattr(recognizer, "create_stream"):
+                # Preserve lightweight test doubles and third-party wrappers
+                # that implement the historical _decode() hook only.
+                raw_text = self._decode(recognizer, samples, sample_rate)
+                decoded_result = DecodeResult(raw_text=raw_text, text=raw_text)
+            else:
+                decoded_result = structured_decoder(recognizer, samples, sample_rate)
+            return decoded_result.raw_text
+
         sv_text, sv_lang2 = (sv_probe if sv_probe is not None else (None, None))
         if self.forced_lang is not None:
             # --mode single: route straight to the forced language, no
             # zh/yue arbitration and no script-based re-decode below.
             rec, tier = self._route_forced(lang)
-            text = self._decode(rec, samples, sample_rate)
+            text = decode_selected(rec)
         elif lang == "zh":
             # whisper-tiny LID labels Cantonese as "zh" (measured 0/12 correct
             # on FLEURS yue), so let SenseVoice's internal LID arbitrate: keep
@@ -940,12 +989,12 @@ class RoutedASR:
                     lang, tier = "yue", "sv"
                 else:
                     rec, tier = self._get_with_fallback("pz")
-                    text2 = self._decode(rec, samples, sample_rate)
+                    text2 = decode_selected(rec)
                     if text2.strip():
                         text = text2
             else:
                 rec, tier = self._route(lang)
-                text = self._decode(rec, samples, sample_rate)
+                text = decode_selected(rec)
         elif lang in ("ko", "yue") and sv_text is not None and sv_lid_tag(sv_lang2) == lang:
             # the switch-confirmation probe already decoded this exact audio
             # through the tier "ko"/"yue" routes to anyway; reuse it instead
@@ -953,12 +1002,12 @@ class RoutedASR:
             text, tier = sv_text, "sv"
         else:
             rec, tier = self._route(lang)
-            text = self._decode(rec, samples, sample_rate)
+            text = decode_selected(rec)
         if (self.forced_lang != "ja" and not text.strip()
                 and tier != "omni" and not suppress_fallback):
             # safety net: the specialist came back empty (likely LID mistake);
             # the 1600-language generalist gets the last word.
-            text = self._decode(self._get("omni"), samples, sample_rate)
+            text = decode_selected(self._get("omni"))
             tier = "omni"
         corrected = script_corrected_lang(lang, text)
         if self.forced_lang is None and live and text.strip() and corrected != lang:
@@ -979,19 +1028,20 @@ class RoutedASR:
                     if "yue" in sv_lang:
                         lang, tier, text = "yue", "sv", text2
                     elif "zh" in sv_lang:
-                        text3 = self._decode(self._get_with_fallback("pz")[0], samples, sample_rate)
+                        text3 = decode_selected(self._get_with_fallback("pz")[0])
                         lang, tier, text = "zh", "pz", (text3 if text3.strip() else text2)
                     elif "ja" in sv_lang:
-                        text3 = self._decode(self._get_with_fallback("rz")[0], samples, sample_rate)
+                        text3 = decode_selected(self._get_with_fallback("rz")[0])
                         lang, tier, text = "ja", "rz", (text3 if text3.strip() else text2)
                     elif "ko" in sv_lang:
                         lang, tier, text = "ko", "sv", text2
             else:
                 rec2, tier2 = self._route(corrected)
-                text2 = self._decode(rec2, samples, sample_rate)
+                text2 = decode_selected(rec2)
                 if text2.strip():
                     lang, tier, text = corrected, tier2, text2
 
+        decoder_raw_text = text
         text = self._replace(text)
         if lang == "ko" and text.strip() and self.ko_spacer is not None:
             try:
@@ -1011,5 +1061,11 @@ class RoutedASR:
             # empty results must not poison the sticky language; neither
             # must a too-short bootstrap noise blip (suppress_bootstrap_seed)
             self.last_lang = lang
-        return {"text": text, "lang": lang, "tier": tier, "lid_ms": lid_ms,
-                "decode_ms": decode_ms, "probe_ms": probe_ms}
+        if decoded_result is None or decoded_result.raw_text != decoder_raw_text:
+            decoded_result = DecodeResult(raw_text=decoder_raw_text, text=text)
+        decoded_result = replace(decoded_result, text=text, lang=lang, tier=tier)
+        output = {"text": text, "lang": lang, "tier": tier, "lid_ms": lid_ms,
+                  "decode_ms": decode_ms, "probe_ms": probe_ms}
+        if structured:
+            output.update({"raw_text": decoder_raw_text, "decode_result": decoded_result})
+        return output

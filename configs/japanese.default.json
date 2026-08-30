@@ -10,5 +10,33 @@
     "min_overlap_chars": 2,
     "max_overlap_chars": 40,
     "min_similarity": 0.82
+  },
+  "quality_gate": {
+    "high_risk_threshold": 0.35,
+    "thresholds": {
+      "min_chars_per_second": 3.1,
+      "max_chars_per_second": 12.0,
+      "min_density_audio_s": 1.0,
+      "unexpected_latin_ratio": 0.8,
+      "min_unexpected_latin_chars": 8,
+      "min_boundary_overlap_s": 0.2,
+      "disagreement_threshold": 0.35,
+      "min_mean_token_log_probability": -0.22
+    },
+    "weights": {
+      "empty_output": 1.0,
+      "very_low_chars_per_second": 0.35,
+      "very_high_chars_per_second": 0.35,
+      "excessive_repetition": 0.5,
+      "unexpected_latin_ratio": 0.45,
+      "boundary_forced_split": 0.2,
+      "short_boundary_overlap": 0.25,
+      "digit_loss": 0.45,
+      "primary_refine_disagreement": 0.4,
+      "secondary_disagreement": 0.3,
+      "suspicious_single_character": 0.3,
+      "unresolved_lexicon_candidate": 0.2,
+      "low_token_log_probability": 0.35
+    }
   }
 }

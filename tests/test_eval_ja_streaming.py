@@ -88,6 +88,7 @@ def test_score_and_write_all_report_formats(tmp_path):
         assert overall["term_f1"] == 1.0
         assert overall["digits_exact_rate"] == 1.0
         assert overall["final_latency_ms_p50"] == 100.0
+        assert "high_risk_rate" not in overall
 
     scored = [{**row, "category": "numbers", "reference": entries[0]["text"], "cer": 0.0}
               for row in hypotheses]
@@ -138,6 +139,27 @@ def test_cli_labels_raw_and_display_outputs(tmp_path, monkeypatch):
         "raw", "テスト", None)
     assert (streaming["text_stage"], streaming["raw_text"], streaming["display_text"]) == (
         "display", None, "テスト")
+    assert "risk_score" not in streaming
+
+
+def test_score_reports_high_and_low_risk_cer_separately():
+    entries = [
+        {"id": "high", "text": "東京都", "category": "test"},
+        {"id": "low", "text": "大阪府", "category": "test"},
+    ]
+    hypotheses = [
+        {"id": "high", "mode": "stream_single_ja", "text": "京都",
+         "audio_s": 1.0, "decode_ms": 1.0, "final_latencies_ms": [],
+         "max_rss_bytes": 0, "high_risk": True, "risk_score": 0.5},
+        {"id": "low", "mode": "stream_single_ja", "text": "大阪府",
+         "audio_s": 1.0, "decode_ms": 1.0, "final_latencies_ms": [],
+         "max_rss_bytes": 0, "high_risk": False, "risk_score": 0.0},
+    ]
+    overall = score_hypotheses(
+        entries, hypotheses, ["stream_single_ja"])["modes"]["stream_single_ja"]["overall"]
+    assert overall["quality_evaluated_samples"] == 2
+    assert overall["high_risk_rate"] == 0.5
+    assert overall["high_risk_cer"] > overall["low_risk_cer"]
 
 
 def test_evaluator_reuses_one_refiner_worker_and_joins_before_rebinding():

@@ -99,6 +99,9 @@ def test_forced_japanese_partial_and_transcribe_never_use_other_tier(monkeypatch
     assert result["lang"] == "ja"
     assert result["tier"] == "rz"
     assert set(result) == {"text", "lang", "tier", "lid_ms", "decode_ms", "probe_ms"}
+    structured = asr.transcribe(samples, 16000, live=True, structured=True)
+    assert structured["raw_text"] == "日本語です"
+    assert structured["decode_result"].text == "日本語です"
     assert asr.resident_models == ["rz"]
 
 

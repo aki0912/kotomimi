@@ -128,6 +128,7 @@ class DecodeOutput:
     segments: int = 1
     input_window_s: list[float] = field(default_factory=list)
     overlap_merges: int = 0
+    quality_segments: list[dict[str, Any]] = field(default_factory=list)
 
 
 class _CaptureServer:
@@ -136,12 +137,14 @@ class _CaptureServer:
         self.refines: list[dict[str, Any]] = []
 
     def final(self, text, lang, speaker, latency_ms, tier,
-              raw_text=None, merged_context_text=None):
+              raw_text=None, merged_context_text=None, quality=None):
         event = {"text": text, "lang": lang, "latency_ms": latency_ms, "tier": tier}
         if raw_text is not None:
             event["raw_text"] = raw_text
         if merged_context_text is not None:
             event["merged_context_text"] = merged_context_text
+        if quality is not None:
+            event["quality"] = quality
         self.finals.append(event)
 
     def publish(self, event):
@@ -161,13 +164,14 @@ class Evaluator:
     """Model-backed evaluator that reuses the production ASR/VAD pipeline."""
 
     def __init__(self, threads: int, min_silence: float, max_speech: float,
-                 japanese_overlap_settings=None):
+                 japanese_overlap_settings=None, quality_gate=None):
         from asr_engine import RoutedASR
 
         self.threads = threads
         self.min_silence = min_silence
         self.max_speech = max_speech
         self.japanese_overlap_settings = japanese_overlap_settings
+        self.quality_gate = quality_gate
         # Match the production CLI: model/LID warmup happens before measured
         # audio, while background preload stays off to keep eval timing stable.
         common = dict(threads=threads, warmup=True, preload=False, max_resident=3)
@@ -183,8 +187,14 @@ class Evaluator:
         started = time.perf_counter()
         text = self.asr._decode(recognizer, samples, sample_rate)
         elapsed_ms = (time.perf_counter() - started) * 1000
+        quality_segments = []
+        if self.quality_gate is not None:
+            from quality_gate import QualityContext
+            quality_segments.append(self.quality_gate.assess(QualityContext(
+                text=text, raw_text=text, audio_s=len(samples) / sample_rate,
+            )).as_dict())
         return DecodeOutput(text, len(samples) / sample_rate, elapsed_ms, [elapsed_ms],
-                            max(before, _rss_bytes()))
+                            max(before, _rss_bytes()), quality_segments=quality_segments)
 
     def _prepare_refiner(self, refiner_type, asr, history, sample_rate, printer, stats):
         if self._refiner is None:
@@ -198,6 +208,9 @@ class Evaluator:
             self._refiner.printer = printer
             self._refiner.stats = stats
             self._refiner.spans = []
+        quality_gate = getattr(self, "quality_gate", None)
+        self._refiner.quality_gate = quality_gate
+        self._refiner.debug_quality = quality_gate is not None
         return self._refiner
 
     def stream(self, wav_path: str, *, refine: bool, single_ja: bool) -> DecodeOutput:
@@ -228,10 +241,14 @@ class Evaluator:
         try:
             run_stream(wav_chunks(samples, sample_rate, realtime=False), vad, sample_rate, asr,
                        stats, printer, refiner, history,
-                       overlap_session=overlap_session)
+                       overlap_session=overlap_session,
+                       quality_gate=self.quality_gate,
+                       debug_quality=self.quality_gate is not None)
             vad.flush()
             drain_segments(vad, sample_rate, asr, stats, printer, history, refiner=refiner,
-                           overlap_session=overlap_session)
+                           overlap_session=overlap_session,
+                           quality_gate=self.quality_gate,
+                           debug_quality=self.quality_gate is not None)
             if refiner is not None:
                 refiner.maybe_refine(0, force=True)
                 refiner._task_queue.join()
@@ -240,9 +257,19 @@ class Evaluator:
             asr.forced_lang = previous_forced_lang
         events = capture.refines if refine and capture.refines else capture.finals
         text = "\n".join(event["text"] for event in events if event.get("text", "").strip())
+        quality_assessments = list(stats.quality_assessments)
+        if self.quality_gate is not None and not quality_assessments:
+            # A file containing no VAD segment still has an observable empty
+            # output at evaluation scope, even though production correctly
+            # emits no subtitle event for pure silence/non-speech.
+            from quality_gate import QualityContext
+            quality_assessments.append(self.quality_gate.assess(QualityContext(
+                text=text, raw_text=text, audio_s=len(samples) / sample_rate,
+            )))
         return DecodeOutput(text, len(samples) / sample_rate, elapsed_ms,
                             list(stats.latencies_ms), max(before, _rss_bytes()), stats.segments,
-                            list(stats.input_window_s), stats.overlap_merges)
+                            list(stats.input_window_s), stats.overlap_merges,
+                            [quality.as_dict() for quality in quality_assessments])
 
     def decode(self, mode: str, wav_path: str) -> DecodeOutput:
         if mode == "offline_primary":
@@ -293,11 +320,22 @@ def score_hypotheses(entries: list[dict[str, Any]], hypotheses: list[dict[str, A
         f1 = (2 * precision * recall / (precision + recall)
               if precision is not None and recall is not None and precision + recall else None)
         digit_rows = [row for row in rows if row["digits_evaluated"]]
+        quality_rows = [row for row in rows if row.get("risk_score") is not None]
+        high_risk_rows = [row for row in quality_rows if row.get("high_risk")]
+        low_risk_rows = [row for row in quality_rows if not row.get("high_risk")]
+
+        def rows_cer(selected):
+            selected_ref = sum(row["reference_chars"] for row in selected)
+            selected_errors = sum(
+                row["substitutions"] + row["deletions"] + row["insertions"]
+                for row in selected)
+            return selected_errors / selected_ref if selected_ref else None
+
         latencies = [value for row in rows for value in row.get("final_latencies_ms", [])]
         input_windows = [value for row in rows for value in row.get("input_window_s", [])]
         audio_s = sum(row["audio_s"] for row in rows)
         decode_s = sum(row["decode_ms"] for row in rows) / 1000
-        return {
+        result = {
             "samples": len(rows),
             "cer": (substitutions + deletions + insertions) / ref_chars if ref_chars else 0.0,
             "substitutions": substitutions, "deletions": deletions, "insertions": insertions,
@@ -320,6 +358,14 @@ def score_hypotheses(entries: list[dict[str, Any]], hypotheses: list[dict[str, A
             "abnormal_repetition_rate": (sum(bool(row["abnormal_repetition"]) for row in rows)
                                          / len(rows) if rows else 0.0),
         }
+        if quality_rows:
+            result.update({
+                "quality_evaluated_samples": len(quality_rows),
+                "high_risk_rate": len(high_risk_rows) / len(quality_rows),
+                "high_risk_cer": rows_cer(high_risk_rows),
+                "low_risk_cer": rows_cer(low_risk_rows),
+            })
+        return result
 
     result: dict[str, Any] = {"modes": {}}
     for mode in modes:
@@ -355,6 +401,23 @@ def render_markdown(metrics: dict[str, Any], hypotheses: list[dict[str, Any]]) -
             f"{num(item['mean_input_window_s'])} | {item['overlap_merges']} | "
             f"{pct(item['empty_rate'])} | {pct(item['abnormal_repetition_rate'])} | "
             f"{item['max_rss_bytes'] / 1024 / 1024:.1f} |")
+    quality_modes = [
+        (mode, data["overall"])
+        for mode, data in metrics["modes"].items()
+        if "high_risk_rate" in data["overall"]
+    ]
+    if quality_modes:
+        lines += [
+            "", "## Quality gate", "",
+            "The values below are explainable risk scores, not confidence.", "",
+            "| mode | evaluated | high risk | high-risk CER | low-risk CER |",
+            "|---|---:|---:|---:|---:|",
+        ]
+        for mode, item in quality_modes:
+            lines.append(
+                f"| {mode} | {item['quality_evaluated_samples']} | "
+                f"{pct(item['high_risk_rate'])} | {pct(item['high_risk_cer'])} | "
+                f"{pct(item['low_risk_cer'])} |")
     lines += ["", "## Category breakdown", "",
               "| mode | category | samples | CER | leading / trailing missing | term F1 | digits exact | empty |",
               "|---|---|---:|---:|---:|---:|---:|---:|"]
@@ -408,6 +471,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--ja-post-context", type=float, default=None)
     parser.add_argument("--ja-max-overlap", type=float, default=None)
     parser.add_argument("--ja-merge-similarity", type=float, default=None)
+    parser.add_argument("--quality-gate", action="store_true",
+                        help="score explainable Japanese ASR risk signals")
     args = parser.parse_args(argv)
     try:
         entries = load_manifest(args.manifest)
@@ -429,7 +494,15 @@ def main(argv: list[str] | None = None) -> int:
         )
     except ValueError as exc:
         parser.error(str(exc))
-    evaluator = Evaluator(args.threads, args.min_silence, args.max_speech, overlap_settings)
+    quality_gate = None
+    if args.quality_gate:
+        from quality_gate import QualityGate, load_quality_gate_settings
+        try:
+            quality_gate = QualityGate(load_quality_gate_settings(args.ja_config))
+        except ValueError as exc:
+            parser.error(str(exc))
+    evaluator = Evaluator(args.threads, args.min_silence, args.max_speech,
+                          overlap_settings, quality_gate)
     hypotheses: list[dict[str, Any]] = []
     for entry in entries:
         if not Path(entry["wav_path"]).is_file():
@@ -437,7 +510,7 @@ def main(argv: list[str] | None = None) -> int:
         for mode in args.modes:
             decoded = evaluator.decode(mode, entry["wav_path"])
             is_raw = mode == "offline_primary"
-            hypotheses.append({
+            hypothesis = {
                 "id": entry["id"], "mode": mode, "text": decoded.text,
                 "text_stage": "raw" if is_raw else "display",
                 "raw_text": decoded.text if is_raw else None,
@@ -447,7 +520,24 @@ def main(argv: list[str] | None = None) -> int:
                 "max_rss_bytes": decoded.max_rss_bytes, "segments": decoded.segments,
                 "input_window_s": decoded.input_window_s,
                 "overlap_merges": decoded.overlap_merges,
-            })
+            }
+            if quality_gate is not None:
+                hypothesis.update({
+                    "risk_score": max(
+                    (float(item["risk_score"]) for item in decoded.quality_segments),
+                    default=None,
+                    ),
+                    "risk_reasons": sorted({
+                        reason for item in decoded.quality_segments
+                        for reason in item.get("risk_reasons", [])
+                    }),
+                    "quality_segments": decoded.quality_segments,
+                    "high_risk": any(
+                        bool(item.get("risk_signals", {}).get("high_risk"))
+                        for item in decoded.quality_segments
+                    ),
+                })
+            hypotheses.append(hypothesis)
             print(f"[{entry['id']}/{mode}] {decoded.text}")
     metrics = score_hypotheses(entries, hypotheses, args.modes)
     metrics["environment"] = environment_metadata()
@@ -456,6 +546,8 @@ def main(argv: list[str] | None = None) -> int:
                            "manifest_sha256": _file_sha256(Path(args.manifest)),
                            "japanese_overlap": (asdict(overlap_settings)
                                                 if overlap_settings is not None else None)}
+    if quality_gate is not None:
+        metrics["settings"]["quality_gate"] = asdict(quality_gate.settings)
     scored = []
     by_id = {entry["id"]: entry for entry in entries}
     for row in hypotheses:

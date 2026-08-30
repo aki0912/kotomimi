@@ -138,6 +138,11 @@ def test_final_event_adds_overlap_fields_without_breaking_legacy_shape():
     server.final("従来テキスト", "ja", "", 12.0, "rz")
     server.final("差分", "ja", "", 13.0, "rz",
                  raw_text="重複部分差分", merged_context_text="従来テキスト差分")
+    server.final("要確認", "ja", "", 14.0, "rz", quality={
+        "risk_score": 0.5,
+        "risk_reasons": ["very_low_chars_per_second"],
+        "risk_signals": {"chars_per_second": 1.0, "high_risk": True},
+    })
     assert events[0] == {
         "type": "final", "text": "従来テキスト", "lang": "ja",
         "speaker": "", "latency_ms": 12.0, "tier": "rz",
@@ -145,3 +150,4 @@ def test_final_event_adds_overlap_fields_without_breaking_legacy_shape():
     assert events[1]["text"] == "差分"
     assert events[1]["raw_text"] == "重複部分差分"
     assert events[1]["merged_context_text"] == "従来テキスト差分"
+    assert events[2]["quality"]["risk_score"] == 0.5

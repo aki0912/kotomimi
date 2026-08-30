@@ -27,6 +27,8 @@ from segment_window import (JapaneseOverlapSettings, SegmentWindowBuilder,
                             load_japanese_overlap_settings,
                             validate_japanese_overlap_settings)
 from text_overlap import MergeResult, merge_overlapping_text
+from quality_gate import (QualityContext, QualityGate,
+                          load_quality_gate_settings)
 
 SAMPLE_RATE = 16000
 WINDOW_SIZE = 512  # samples per VAD chunk, ~32ms @ 16kHz
@@ -172,6 +174,7 @@ class SessionStats:
         self.input_window_s: list[float] = []
         self.overlap_merges = 0
         self.refine_lang_corrections = 0  # times the refine pass overruled the fast-path language
+        self.quality_assessments = []
 
     def summary(self) -> str:
         if not self.latencies_ms:
@@ -296,7 +299,9 @@ def drain_segments(vad, sample_rate: int, asr: RoutedASR, stats: SessionStats,
                    known_lang: str | None = None, refiner: "Refiner | None" = None,
                    translator_worker: "TranslationWorker | None" = None,
                    speaker_labeler=None,
-                   overlap_session: JapaneseOverlapSession | None = None) -> int:
+                   overlap_session: JapaneseOverlapSession | None = None,
+                   quality_gate: QualityGate | None = None,
+                   debug_quality: bool = False) -> int:
     drained = 0
     while not vad.empty():
         segment = vad.front
@@ -304,11 +309,13 @@ def drain_segments(vad, sample_rate: int, asr: RoutedASR, stats: SessionStats,
         speech_samples = np.asarray(segment.samples, dtype=np.float32)
         seg_start, seg_end = segment.start, segment.start + len(speech_samples)
         audio_overlap_s = 0.0
+        forced_split = False
         if history is not None and overlap_session is not None:
             window = overlap_session.build_window(
                 history, seg_start, seg_end, speech_samples)
             samples = window.samples
             audio_overlap_s = window.overlap_with_previous_s
+            forced_split = window.forced_split
         else:
             samples = speech_samples
         if history is not None and overlap_session is None:
@@ -320,9 +327,13 @@ def drain_segments(vad, sample_rate: int, asr: RoutedASR, stats: SessionStats,
         raw_speech_s = (seg_end - seg_start) / sample_rate  # without preroll
         # the early LID belongs to the utterance in progress; only the first
         # drained segment can safely claim it
-        result = asr.transcribe(samples, sample_rate,
-                                known_lang=known_lang if drained == 1 else None,
-                                speech_s=raw_speech_s)
+        transcribe_kwargs = {
+            "known_lang": known_lang if drained == 1 else None,
+            "speech_s": raw_speech_s,
+        }
+        if quality_gate is not None:
+            transcribe_kwargs["structured"] = True
+        result = asr.transcribe(samples, sample_rate, **transcribe_kwargs)
         latency_ms = (time.perf_counter() - seg_end_time) * 1000
 
         raw_text = result["text"]
@@ -334,6 +345,33 @@ def drain_segments(vad, sample_rate: int, asr: RoutedASR, stats: SessionStats,
                 stats.overlap_merges += 1
         stats.input_window_s.append(seg_s)
 
+        quality = None
+        if quality_gate is not None:
+            decode_result = result.get("decode_result")
+            token_log_probs = (
+                decode_result.token_log_probs if decode_result is not None else ())
+            extra_signals = {}
+            mean_token_log_probability = None
+            if token_log_probs:
+                # sherpa-onnx exposes these as ys_log_probs. Preserve their
+                # model-specific meaning; do not relabel them as confidence.
+                mean_token_log_probability = sum(token_log_probs) / len(token_log_probs)
+            quality = quality_gate.assess(QualityContext(
+                text=result["text"],
+                raw_text=result.get("raw_text", raw_text),
+                audio_s=raw_speech_s,
+                lang=result["lang"],
+                forced_split=forced_split,
+                boundary_overlap_s=audio_overlap_s,
+                extra_signals=extra_signals,
+                mean_token_log_probability=mean_token_log_probability,
+            ))
+            stats.quality_assessments.append(quality)
+            if debug_quality:
+                reasons = ",".join(quality.risk_reasons) or "none"
+                print(f"[quality] risk={quality.risk_score:.2f} reasons={reasons}",
+                      file=sys.stderr, flush=True)
+
         if not result["text"].strip():
             # A fully duplicated overlapping window legitimately has an
             # empty delta.  Keep its opt-in event observable so raw_text is
@@ -343,12 +381,19 @@ def drain_segments(vad, sample_rate: int, asr: RoutedASR, stats: SessionStats,
                 stats.segments += 1
                 stats.latencies_ms.append(latency_ms)
                 printer.clear()
+                final_kwargs = {
+                    "raw_text": overlap_output.raw_text,
+                    "merged_context_text": overlap_output.merged_context_text,
+                }
+                if debug_quality and quality is not None:
+                    final_kwargs["quality"] = quality.as_dict()
                 printer.server.final(
                     "", result["lang"], "", latency_ms,
                     result.get("tier", ""),
-                    raw_text=overlap_output.raw_text,
-                    merged_context_text=overlap_output.merged_context_text,
+                    **final_kwargs,
                 )
+            elif debug_quality and quality is not None and printer.server is not None:
+                printer.server.publish({"type": "quality", **quality.as_dict()})
             continue  # non-speech (jingle/SFX): no line, no speaker, no span
 
         speaker = ""
@@ -359,15 +404,23 @@ def drain_segments(vad, sample_rate: int, asr: RoutedASR, stats: SessionStats,
         stats.latencies_ms.append(latency_ms)
         printer.clear()
         if printer.server is not None:
+            quality_payload = quality.as_dict() if debug_quality and quality is not None else None
             if overlap_output is None:
-                printer.server.final(result["text"], result["lang"], speaker.rstrip("|"),
-                                     latency_ms, result.get("tier", ""))
+                final_kwargs = {"quality": quality_payload} if quality_payload is not None else {}
+                printer.server.final(
+                    result["text"], result["lang"], speaker.rstrip("|"),
+                    latency_ms, result.get("tier", ""), **final_kwargs)
             else:
+                final_kwargs = {
+                    "raw_text": overlap_output.raw_text,
+                    "merged_context_text": overlap_output.merged_context_text,
+                }
+                if quality_payload is not None:
+                    final_kwargs["quality"] = quality_payload
                 printer.server.final(
                     result["text"], result["lang"], speaker.rstrip("|"),
                     latency_ms, result.get("tier", ""),
-                    raw_text=overlap_output.raw_text,
-                    merged_context_text=overlap_output.merged_context_text,
+                    **final_kwargs,
                 )
         probe_part = f", probe={result['probe_ms']:.0f}ms" if result.get("probe_ms") else ""
         print(f"[{speaker}{result['lang']}/{result.get('tier', '?')}] {result['text']}  "
@@ -485,13 +538,17 @@ class Refiner:
 
     def __init__(self, asr: RoutedASR, history: AudioHistory, sample_rate: int,
                  printer: PartialPrinter, transcript_path: str | None = None,
-                 translators: dict | None = None, stats: "SessionStats | None" = None):
+                 translators: dict | None = None, stats: "SessionStats | None" = None,
+                 quality_gate: QualityGate | None = None,
+                 debug_quality: bool = False):
         self.asr = asr
         self.history = history
         self.sr = sample_rate
         self.printer = printer
         self.translators = translators or {}  # ja->target, synchronous per refine
         self.stats = stats
+        self.quality_gate = quality_gate
+        self.debug_quality = debug_quality
         self.spans: list[tuple[int, int, str, str, str]] = []
         self._transcript = open(transcript_path, "a", encoding="utf-8") if transcript_path else None
         # A single FIFO worker (not "spawn a thread per refine") is what makes
@@ -664,14 +721,32 @@ class Refiner:
                 refine_lang = lang
             if not text.strip():
                 return
+            quality = None
+            if self.quality_gate is not None:
+                quality = self.quality_gate.assess(QualityContext(
+                    text=fast_joined,
+                    raw_text=fast_joined,
+                    audio_s=len(buf) / self.sr,
+                    lang=lang,
+                    refined_text=text,
+                ))
+                if self.stats is not None:
+                    self.stats.quality_assessments.append(quality)
+                if self.debug_quality:
+                    reasons = ",".join(quality.risk_reasons) or "none"
+                    print(f"[quality/refine] risk={quality.risk_score:.2f} "
+                          f"reasons={reasons}", file=sys.stderr, flush=True)
             if refine_lang != lang and self.stats is not None:
                 self.stats.refine_lang_corrections += 1
                 print(f"[refine] language corrected {lang}->{refine_lang}", flush=True)
             tag = f"{speaker}|{refine_lang}" if speaker else refine_lang
             print(f"[refine/{tag}] {text}", flush=True)
             if self.printer.server is not None:
-                self.printer.server.publish({"type": "refine", "text": text, "lang": refine_lang,
-                                             "speaker": speaker})
+                event = {"type": "refine", "text": text, "lang": refine_lang,
+                         "speaker": speaker}
+                if self.debug_quality and quality is not None:
+                    event["quality"] = quality.as_dict()
+                self.printer.server.publish(event)
             outs = []
             if self.translators and refine_lang == "ja":
                 # synchronous here (we're already off the hot path) so the
@@ -719,7 +794,9 @@ def run_stream(chunks, vad, sample_rate: int, asr: RoutedASR, stats: SessionStat
                history: AudioHistory | None = None,
                translator_worker: "TranslationWorker | None" = None,
                speaker_labeler=None,
-               overlap_session: JapaneseOverlapSession | None = None):
+               overlap_session: JapaneseOverlapSession | None = None,
+               quality_gate: QualityGate | None = None,
+               debug_quality: bool = False):
     audio_pos = 0.0
     last_partial = 0.0
     early_lang = None  # LID result computed mid-utterance so finals skip it
@@ -735,7 +812,9 @@ def run_stream(chunks, vad, sample_rate: int, asr: RoutedASR, stats: SessionStat
                               refiner=refiner,
                               translator_worker=translator_worker,
                               speaker_labeler=speaker_labeler,
-                              overlap_session=overlap_session):
+                              overlap_session=overlap_session,
+                              quality_gate=quality_gate,
+                              debug_quality=debug_quality):
                 early_lang = None
             if refiner is not None:
                 refiner.maybe_refine(int(audio_pos * sample_rate), force=True)
@@ -764,7 +843,9 @@ def run_stream(chunks, vad, sample_rate: int, asr: RoutedASR, stats: SessionStat
                           refiner=refiner,
                           translator_worker=translator_worker,
                           speaker_labeler=speaker_labeler,
-                          overlap_session=overlap_session):
+                          overlap_session=overlap_session,
+                          quality_gate=quality_gate,
+                          debug_quality=debug_quality):
             early_lang = None
         if refiner is not None and not vad.is_speech_detected():
             refiner.maybe_refine(int(audio_pos * sample_rate))
@@ -827,6 +908,8 @@ def main():
                     help="override Japanese config maximum audio overlap")
     ap.add_argument("--ja-merge-similarity", type=float, default=None, metavar="RATIO",
                     help="override Japanese config text merge similarity threshold")
+    ap.add_argument("--debug-quality", action="store_true",
+                    help="include explainable risk_score telemetry in final events and stderr")
     ap.add_argument("--lang-switch-guard", type=float, default=None, metavar="SEC",
                     help="treat a new-language detection shorter than SEC as noise: it never "
                          "counts toward confirming a switch (see --lid-switch-confirm) and it "
@@ -884,6 +967,12 @@ def main():
         )
     except ValueError as exc:
         ap.error(str(exc))
+    quality_gate = None
+    if args.debug_quality:
+        try:
+            quality_gate = QualityGate(load_quality_gate_settings(args.ja_config))
+        except ValueError as exc:
+            ap.error(str(exc))
 
     server = None
     if args.serve:
@@ -935,7 +1024,9 @@ def main():
         if overlap_settings is not None else None)
     refiner = None if args.no_refine else Refiner(asr, history, SAMPLE_RATE, printer,
                                                   transcript_path=args.transcript,
-                                                  translators=translators, stats=stats)
+                                                  translators=translators, stats=stats,
+                                                  quality_gate=quality_gate,
+                                                  debug_quality=args.debug_quality)
 
     def finish(sr):
         vad.flush()
@@ -943,7 +1034,9 @@ def main():
                        refiner=refiner,
                        translator_worker=translator_worker,
                        speaker_labeler=speaker_labeler,
-                       overlap_session=overlap_session)
+                       overlap_session=overlap_session,
+                       quality_gate=quality_gate,
+                       debug_quality=args.debug_quality)
         if refiner is not None:
             refiner.maybe_refine(0, force=True)
 
@@ -958,7 +1051,8 @@ def main():
             samples, sr = read_wave(args.wav)  # resampled to SAMPLE_RATE if needed
             run_stream(wav_chunks(samples, sr, realtime=not args.no_realtime),
                        vad, sr, asr, stats, printer, refiner, history, translator_worker,
-                       speaker_labeler, overlap_session)
+                       speaker_labeler, overlap_session,
+                       quality_gate=quality_gate, debug_quality=args.debug_quality)
             finish(sr)
         elif input_mode == "ws":
             from ws_ingest import INGEST_PATH, IngestServer
@@ -968,10 +1062,12 @@ def main():
             print(f"ws ingest: ws://{args.ws_host}:{args.ws_port}{INGEST_PATH}  "
                   f"(JSON handshake, then binary pcm_s16le frames)", file=sys.stderr)
             run_stream(ws_chunks(ingest), vad, SAMPLE_RATE, asr, stats, printer, refiner,
-                       history, translator_worker, speaker_labeler, overlap_session)
+                       history, translator_worker, speaker_labeler, overlap_session,
+                       quality_gate=quality_gate, debug_quality=args.debug_quality)
         else:
             run_stream(mic_chunks(), vad, SAMPLE_RATE, asr, stats, printer, refiner, history,
-                       translator_worker, speaker_labeler, overlap_session)
+                       translator_worker, speaker_labeler, overlap_session,
+                       quality_gate=quality_gate, debug_quality=args.debug_quality)
     except KeyboardInterrupt:
         finish(SAMPLE_RATE)
     finally:
