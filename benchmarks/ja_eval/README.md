@@ -108,7 +108,7 @@ Build the corresponding evaluation profiles after QC:
 
 ```bash
 python -m kotomimi_eval suite build official-experimental
-python -m kotomimi_eval suite build fleurs-clean-candidate
+python -m kotomimi_eval suite build fleurs-clean-approved
 python -m kotomimi_eval suite build quality-stress
 ```
 
@@ -119,11 +119,13 @@ python -m kotomimi_eval audit create \
   --dataset fleurs_ja --view clean --count 204 --seed 20260829
 ```
 
-All three profiles are explicitly ineligible for release gating. Reports state
-that speech activity is estimated with 20 ms frame RMS, not model VAD. They
-must not be described as VAD measurements. Audit decisions are appended and
-synced after every POST. The server rejects non-loopback bind addresses; its
-default URL is `http://127.0.0.1:8765/`.
+Official and stress are explicitly ineligible for release gating. The clean
+profile becomes eligible only after its exact manifest passes the separate
+human audit; it remains supplementary and does not replace official results.
+Reports state that speech activity is estimated with 20 ms frame RMS, not
+model VAD. They must not be described as VAD measurements. Audit decisions are
+appended and synced after every POST. The server rejects non-loopback bind
+addresses; its default URL is `http://127.0.0.1:8765/`.
 
 Use `python -m kotomimi_eval audit status --latest` to inspect completion and
 the initial quality gate. `audit report --latest` writes a privacy-safe aggregate

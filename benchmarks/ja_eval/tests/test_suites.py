@@ -25,14 +25,14 @@ def test_jnv_is_explicitly_nonverbal_not_cer():
         assert load_suites()[name].datasets["jnv"]["metric_family"] == "nonverbal"
 
 
-def test_policy_profiles_are_explicit_and_never_release_gates():
+def test_policy_profiles_have_explicit_gate_eligibility():
     suites = load_suites()
     expected = {
         "official-experimental": ("official_regression", "experimental", "official"),
-        "fleurs-clean-candidate": ("clean_candidate", "candidate", "clean"),
+        "fleurs-clean-approved": ("clean_regression", "approved", "clean"),
         "quality-stress": ("quality_stress", "experimental", "stress"),
     }
     for name, metadata in expected.items():
         suite = suites[name]
         assert (suite.purpose, suite.quality_status, suite.evaluation_view) == metadata
-        assert suite.release_gate_eligible is False
+        assert suite.release_gate_eligible is (name == "fleurs-clean-approved")

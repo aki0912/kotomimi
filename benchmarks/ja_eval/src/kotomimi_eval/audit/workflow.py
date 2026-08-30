@@ -362,6 +362,13 @@ def write_audit_report(artifact_root: str | Path, audit_id: str) -> tuple[dict, 
     label_lines = "\n".join(
         f"| `{label}` | {count} |" for label, count in report["label_counts"].items()
     ) or "| — | 0 |"
+    disposition = (
+        "This exact clean view is approved as a supplementary regression gate. "
+        "It does not replace official results."
+        if report["source_view"] == "clean" and report["approved_for_gate"]
+        else "The official evaluation remains available. An experimental dataset is not used "
+             "as an approved release gate, and the clean view does not replace official results."
+    )
     markdown = f"""# Audit report: {audit_id}
 
 - Dataset: `{report['dataset_id']}`
@@ -373,8 +380,10 @@ def write_audit_report(artifact_root: str | Path, audit_id: str) -> tuple[dict, 
 - Truncated rate: {report['truncated_rate']:.1%} (maximum 2.0%)
 - Approved for gate: `{str(report['approved_for_gate']).lower()}`
 
-The official evaluation remains available. An experimental dataset is not used
-as an approved release gate, and the clean view does not replace official results.
+{disposition}
+
+Duplicate labels are reported but do not automatically remove samples or fail
+the gate; repeated text from different speakers can be valid evaluation data.
 
 ## Labels
 

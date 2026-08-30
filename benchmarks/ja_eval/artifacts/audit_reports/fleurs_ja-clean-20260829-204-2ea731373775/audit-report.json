@@ -1,8 +1,8 @@
 {
-  "approved_for_gate": false,
+  "approved_for_gate": true,
   "audit_id": "fleurs_ja-clean-20260829-204-2ea731373775",
   "dataset_id": "fleurs_ja",
-  "dataset_status": "pending",
+  "dataset_status": "approved",
   "dataset_version": "70bb2e84b976b7e960aa89f1c648e09c59f894dd",
   "gate_thresholds": {
     "maximum_severe_issue_rate": 0.05,
@@ -10,16 +10,20 @@
     "requires_complete_review": true,
     "requires_no_uncertain": true
   },
-  "generated_at": "2026-08-29T23:30:41.438262+00:00",
-  "history_entries": 0,
-  "label_counts": {},
+  "generated_at": "2026-08-30T00:41:33.674265+00:00",
+  "history_entries": 204,
+  "label_counts": {
+    "duplicate": 31,
+    "minor_transcript_issue": 1,
+    "ok": 172
+  },
   "privacy": {
     "contains_audio_paths": false,
     "contains_references": false,
     "contains_sample_ids": false,
     "contains_speaker_ids": false
   },
-  "reviewed_count": 0,
+  "reviewed_count": 204,
   "sample_count": 204,
   "samples_sha256": "eaa94a4a7c80c9849df404d3a8f745ed5e5165deab564e8ffb0266f293c1d0dc",
   "schema_version": 1,

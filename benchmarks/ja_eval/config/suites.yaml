@@ -101,13 +101,13 @@ suites:
       common_voice_ja_26: {count: 1000, view: official, selection: deterministic_stratified_speaker_aware}
       fleurs_ja: {count: 300, view: official, selection: deterministic_stratified_speaker_aware}
 
-  fleurs-clean-candidate:
+  fleurs-clean-approved:
     version: 1
     seed: 20260829
-    purpose: clean_candidate
-    quality_status: candidate
+    purpose: clean_regression
+    quality_status: approved
     evaluation_view: clean
-    release_gate_eligible: false
+    release_gate_eligible: true
     allowed_policies: [strict]
     datasets:
       fleurs_ja: {count: all, view: clean, selection: deterministic_stratified}
