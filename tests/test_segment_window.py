@@ -67,6 +67,29 @@ def test_overlap_is_capped_by_max_overlap():
     assert second.overlap_with_previous_samples == 50
 
 
+def test_speech_overlap_never_exceeds_max_overlap():
+    builder = SegmentWindowBuilder()
+    build(builder, History(), 500, 600, max_overlap_s=0.3)
+    second = build(builder, History(), 600, 700, max_overlap_s=0.3)
+    assert second.context_start == 570
+    assert second.overlap_with_previous_samples == 30
+
+
+def test_post_context_does_not_consume_the_speech_overlap_allowance():
+    builder = SegmentWindowBuilder()
+    first = build(
+        builder, History(), 500, 600,
+        pre_context_s=0.6, post_context_s=0.2, max_overlap_s=0.3,
+    )
+    second = build(
+        builder, History(), 635, 735,
+        pre_context_s=0.6, post_context_s=0.2, max_overlap_s=0.3,
+    )
+    assert first.context_end == 620
+    assert second.context_start == 575
+    assert second.overlap_with_previous_samples == 25
+
+
 def test_compatibility_mode_never_reenters_previous_window():
     builder = SegmentWindowBuilder()
     first = build(builder, History(), 500, 600, allow_previous_overlap=False)

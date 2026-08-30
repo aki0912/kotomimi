@@ -144,9 +144,20 @@ class SegmentWindowBuilder:
         desired_start = max(speech_start - pre_samples, history_start)
         if self._previous_context_end is not None:
             if allow_previous_overlap:
+                # max_overlap_s limits duplicated *speech*.  The previous
+                # context end can include post-VAD silence, so measuring the
+                # allowance from it would silently consume post_context_s
+                # (for example, 0.3 s max - 0.2 s post = only 0.1 s of
+                # reusable speech) and leave too little audio for text
+                # alignment.  Anchor the limit at the prior speech end.
+                previous_overlap_end = (
+                    self._previous_speech_end
+                    if self._previous_speech_end is not None
+                    else self._previous_context_end
+                )
                 desired_start = max(
                     desired_start,
-                    self._previous_context_end - max_overlap_samples,
+                    previous_overlap_end - max_overlap_samples,
                 )
             else:
                 desired_start = max(desired_start, self._previous_context_end)
