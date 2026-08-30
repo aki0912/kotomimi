@@ -1,0 +1,35 @@
+{
+  "approved_for_gate": true,
+  "audit_id": "fleurs_ja-clean-20260829-204-2ea731373775",
+  "dataset_id": "fleurs_ja",
+  "dataset_status": "approved",
+  "dataset_version": "70bb2e84b976b7e960aa89f1c648e09c59f894dd",
+  "gate_thresholds": {
+    "maximum_severe_issue_rate": 0.05,
+    "maximum_truncated_rate": 0.02,
+    "requires_complete_review": true,
+    "requires_no_uncertain": true
+  },
+  "generated_at": "2026-08-30T00:41:33.674265+00:00",
+  "history_entries": 204,
+  "label_counts": {
+    "duplicate": 31,
+    "minor_transcript_issue": 1,
+    "ok": 172
+  },
+  "privacy": {
+    "contains_audio_paths": false,
+    "contains_references": false,
+    "contains_sample_ids": false,
+    "contains_speaker_ids": false
+  },
+  "reviewed_count": 204,
+  "sample_count": 204,
+  "samples_sha256": "eaa94a4a7c80c9849df404d3a8f745ed5e5165deab564e8ffb0266f293c1d0dc",
+  "schema_version": 1,
+  "selected_ids_sha256": "d3eca7feed76e7ee26d7947ece5a1a16f668caa9d67aca3d32eb76ba7e8628b1",
+  "severe_issue_rate": 0.0,
+  "source_manifest_sha256": "964b171075c6151168be40e3db9f769c3d2f513d87db5795e7cb2dfcdfc8ac20",
+  "source_view": "clean",
+  "truncated_rate": 0.0
+}

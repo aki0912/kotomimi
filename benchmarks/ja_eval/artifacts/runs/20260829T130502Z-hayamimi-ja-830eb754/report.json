@@ -1,0 +1,363 @@
+{
+  "artifacts": {
+    "hypotheses_sha256": "3ce693176802608917a1178c91b1ef7373b111a1fe3e456e4726cf785a534c4f"
+  },
+  "data_provenance": {
+    "fleurs_ja": {
+      "attribution": {
+        "creator": "Google",
+        "dataset_id": "fleurs_ja",
+        "required": true,
+        "source_url": "https://huggingface.co/datasets/google/fleurs",
+        "spdx": "CC-BY-4.0",
+        "title": "FLEURS - Japanese"
+      },
+      "audit_status": "not-run",
+      "license_policy": "strict",
+      "license_spdx": "CC-BY-4.0",
+      "prepared_lock_sha256": "d4b95bdd6c5b9bd849b47fe38b31880b27314c643f2fb57c7aad1af95cf6c7b5",
+      "prepared_manifest_sha256": "2ea73137377569b052f0e9228c1d36fb3eb9b62acc297d65ae65398f4f1844b8",
+      "selected_count": 300,
+      "source_revision": "70bb2e84b976b7e960aa89f1c648e09c59f894dd",
+      "source_split": "test",
+      "version": "70bb2e84b976b7e960aa89f1c648e09c59f894dd"
+    }
+  },
+  "datasets": {
+    "fleurs_ja": {
+      "audio_s": 3936.479999999999,
+      "decode_failures": 0,
+      "decode_s": 35.9584436599107,
+      "latency_ms_p50": 114.1561879994697,
+      "latency_ms_p95": 178.58163059208897,
+      "normalized": {
+        "cer": 0.08956810631229235,
+        "deletions": 443,
+        "insertions": 163,
+        "reference_chars": 15050,
+        "substitutions": 742
+      },
+      "peak_rss_bytes": 779108352,
+      "raw": {
+        "cer": 0.14775758327647168,
+        "deletions": 1428,
+        "insertions": 133,
+        "reference_chars": 16121,
+        "substitutions": 821
+      },
+      "rtf": 0.009134669466099334,
+      "samples": 300,
+      "sentence_exact_rate": 0.20666666666666667
+    }
+  },
+  "environment": {
+    "machine": "arm64",
+    "os": "Darwin",
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "python": "3.11.9",
+    "threads": 4
+  },
+  "failures": [],
+  "metrics": {
+    "dataset_macro_cer": 0.08956810631229235,
+    "decode_failures": 0,
+    "deletions": 443,
+    "insertions": 163,
+    "normalized_micro_cer": 0.08956810631229235,
+    "p50_latency_ms": 114.1561879994697,
+    "p95_latency_ms": 178.58163059208897,
+    "peak_rss_bytes": 779108352,
+    "raw_micro_cer": 0.14775758327647168,
+    "reference_chars": 15050,
+    "rtf": 0.009134669466099334,
+    "sentence_exact_rate": 0.20666666666666667,
+    "substitutions": 742
+  },
+  "qc": {
+    "flagged_samples": 69,
+    "view": "official"
+  },
+  "run_id": "20260829T130502Z-hayamimi-ja-830eb754",
+  "schema_version": 1,
+  "subsets": {
+    "digits": {
+      "digit-containing": {
+        "audio_s": 1459.9199999999996,
+        "decode_failures": 0,
+        "decode_s": 13.374291080966941,
+        "latency_ms_p50": 123.12495800142642,
+        "latency_ms_p95": 214.81355770665687,
+        "normalized": {
+          "cer": 0.13781877373846987,
+          "deletions": 217,
+          "insertions": 84,
+          "reference_chars": 5529,
+          "substitutions": 461
+        },
+        "peak_rss_bytes": 779108352,
+        "raw": {
+          "cer": 0.19623655913978494,
+          "deletions": 597,
+          "insertions": 61,
+          "reference_chars": 5952,
+          "substitutions": 510
+        },
+        "rtf": 0.009160975314378147,
+        "samples": 103,
+        "sentence_exact_rate": 0.0
+      },
+      "no-ascii-digits": {
+        "audio_s": 2476.560000000001,
+        "decode_failures": 0,
+        "decode_s": 22.58415257894376,
+        "latency_ms_p50": 109.87649999151472,
+        "latency_ms_p95": 165.3923254081746,
+        "normalized": {
+          "cer": 0.06154815670622834,
+          "deletions": 226,
+          "insertions": 79,
+          "reference_chars": 9521,
+          "substitutions": 281
+        },
+        "peak_rss_bytes": 779108352,
+        "raw": {
+          "cer": 0.11938243681777952,
+          "deletions": 831,
+          "insertions": 72,
+          "reference_chars": 10169,
+          "substitutions": 311
+        },
+        "rtf": 0.009119162297276768,
+        "samples": 197,
+        "sentence_exact_rate": 0.3147208121827411
+      }
+    },
+    "duration": {
+      "long": {
+        "audio_s": 3830.6999999999994,
+        "decode_failures": 0,
+        "decode_s": 34.96548753893876,
+        "latency_ms_p50": 115.73845850216458,
+        "latency_ms_p95": 182.31038499288843,
+        "normalized": {
+          "cer": 0.09087812521288915,
+          "deletions": 438,
+          "insertions": 161,
+          "reference_chars": 14679,
+          "substitutions": 735
+        },
+        "peak_rss_bytes": 779108352,
+        "raw": {
+          "cer": 0.14895376200470647,
+          "deletions": 1397,
+          "insertions": 132,
+          "reference_chars": 15723,
+          "substitutions": 813
+        },
+        "rtf": 0.009127701866222561,
+        "samples": 286,
+        "sentence_exact_rate": 0.19230769230769232
+      },
+      "medium": {
+        "audio_s": 105.78,
+        "decode_failures": 0,
+        "decode_s": 0.9929561209719395,
+        "latency_ms_p50": 70.98749949363992,
+        "latency_ms_p95": 75.38947444045334,
+        "normalized": {
+          "cer": 0.03773584905660377,
+          "deletions": 5,
+          "insertions": 2,
+          "reference_chars": 371,
+          "substitutions": 7
+        },
+        "peak_rss_bytes": 779108352,
+        "raw": {
+          "cer": 0.10050251256281408,
+          "deletions": 31,
+          "insertions": 1,
+          "reference_chars": 398,
+          "substitutions": 8
+        },
+        "rtf": 0.00938699301353696,
+        "samples": 14,
+        "sentence_exact_rate": 0.5
+      }
+    },
+    "gender": {
+      "female": {
+        "audio_s": 539.3399999999999,
+        "decode_failures": 0,
+        "decode_s": 4.9248597099940525,
+        "latency_ms_p50": 126.01237499620765,
+        "latency_ms_p95": 207.03801660565657,
+        "normalized": {
+          "cer": 0.07011686143572621,
+          "deletions": 46,
+          "insertions": 24,
+          "reference_chars": 1797,
+          "substitutions": 56
+        },
+        "peak_rss_bytes": 779108352,
+        "raw": {
+          "cer": 0.1265625,
+          "deletions": 159,
+          "insertions": 17,
+          "reference_chars": 1920,
+          "substitutions": 67
+        },
+        "rtf": 0.00913127101641646,
+        "samples": 37,
+        "sentence_exact_rate": 0.2972972972972973
+      },
+      "male": {
+        "audio_s": 3397.14,
+        "decode_failures": 0,
+        "decode_s": 31.033583949916647,
+        "latency_ms_p50": 112.79270800878294,
+        "latency_ms_p95": 171.43883750395617,
+        "normalized": {
+          "cer": 0.09220553836867125,
+          "deletions": 397,
+          "insertions": 139,
+          "reference_chars": 13253,
+          "substitutions": 686
+        },
+        "peak_rss_bytes": 779108352,
+        "raw": {
+          "cer": 0.15062319554960918,
+          "deletions": 1269,
+          "insertions": 116,
+          "reference_chars": 14201,
+          "substitutions": 754
+        },
+        "rtf": 0.00913520901402846,
+        "samples": 263,
+        "sentence_exact_rate": 0.19391634980988592
+      }
+    },
+    "latin": {
+      "latin-containing": {
+        "audio_s": 491.46,
+        "decode_failures": 0,
+        "decode_s": 4.513935705952463,
+        "latency_ms_p50": 124.17662500229198,
+        "latency_ms_p95": 229.24126600846643,
+        "normalized": {
+          "cer": 0.1306122448979592,
+          "deletions": 58,
+          "insertions": 24,
+          "reference_chars": 1960,
+          "substitutions": 174
+        },
+        "peak_rss_bytes": 779091968,
+        "raw": {
+          "cer": 0.20655737704918034,
+          "deletions": 207,
+          "insertions": 28,
+          "reference_chars": 2135,
+          "substitutions": 206
+        },
+        "rtf": 0.009184746888765033,
+        "samples": 33,
+        "sentence_exact_rate": 0.18181818181818182
+      },
+      "no-latin": {
+        "audio_s": 3445.02,
+        "decode_failures": 0,
+        "decode_s": 31.444507953958237,
+        "latency_ms_p50": 112.79429099522531,
+        "latency_ms_p95": 171.36722510767868,
+        "normalized": {
+          "cer": 0.08342245989304813,
+          "deletions": 385,
+          "insertions": 139,
+          "reference_chars": 13090,
+          "substitutions": 568
+        },
+        "peak_rss_bytes": 779108352,
+        "raw": {
+          "cer": 0.1387816387816388,
+          "deletions": 1221,
+          "insertions": 105,
+          "reference_chars": 13986,
+          "substitutions": 615
+        },
+        "rtf": 0.009127525516240322,
+        "samples": 267,
+        "sentence_exact_rate": 0.20973782771535582
+      }
+    },
+    "qc": {
+      "flagged": {
+        "audio_s": 996.96,
+        "decode_failures": 0,
+        "decode_s": 9.13185399894428,
+        "latency_ms_p50": 124.75791599717923,
+        "latency_ms_p95": 214.27623280906118,
+        "normalized": {
+          "cer": 0.10238814164150425,
+          "deletions": 102,
+          "insertions": 48,
+          "reference_chars": 3643,
+          "substitutions": 223
+        },
+        "peak_rss_bytes": 779108352,
+        "raw": {
+          "cer": 0.16996951219512196,
+          "deletions": 359,
+          "insertions": 44,
+          "reference_chars": 3936,
+          "substitutions": 266
+        },
+        "rtf": 0.009159699485379834,
+        "samples": 69,
+        "sentence_exact_rate": 0.2463768115942029
+      },
+      "unflagged": {
+        "audio_s": 2939.519999999998,
+        "decode_failures": 0,
+        "decode_s": 26.82658966096642,
+        "latency_ms_p50": 110.70354199910071,
+        "latency_ms_p95": 169.6314375003567,
+        "normalized": {
+          "cer": 0.08547383185763129,
+          "deletions": 341,
+          "insertions": 115,
+          "reference_chars": 11407,
+          "substitutions": 519
+        },
+        "peak_rss_bytes": 779108352,
+        "raw": {
+          "cer": 0.14058268362741075,
+          "deletions": 1069,
+          "insertions": 89,
+          "reference_chars": 12185,
+          "substitutions": 555
+        },
+        "rtf": 0.009126180349501427,
+        "samples": 231,
+        "sentence_exact_rate": 0.19480519480519481
+      }
+    }
+  },
+  "suite": {
+    "lock_sha256": "0be8aa05f7138ffb769aa91d32b26d79a8d06ff35c5c9392a6c1417641f0e3ed",
+    "manifest_sha256": "098c528a90e8e4361d87bb716ab9f637df974d57ae5ca84c19e3aa36bf6dd029",
+    "name": "minimum-fleurs",
+    "version": 1
+  },
+  "system": {
+    "forced_lang": "ja",
+    "git_commit": "830eb754dec7baab347806585525229eac64f41c",
+    "git_dirty": false,
+    "id": "hayamimi-ja",
+    "model_files": {
+      "decoder-epoch-35-avg-1.int8.onnx": "sha256:d0179db78a2e65445c5c3dc41e94c62068fc539fe4e45060e32f438cca76432f",
+      "encoder-epoch-35-avg-1.int8.onnx": "sha256:ead1579e118b821a767242a8eb9272634b0e63ba16f8dfc4d126732406eae268",
+      "joiner-epoch-35-avg-1.int8.onnx": "sha256:c7f4ba40a8ae307a6c30b5c06e2570add04466bcb45bab62699f0ec5d00ed495",
+      "tokens.txt": "sha256:144f8a4f639373a1bdf7eabb2437482ef64b0cc5db24ad27cce65f293e4faa24"
+    },
+    "punctuate": false
+  }
+}

@@ -1,0 +1,10 @@
+schema_version: 1
+profiles:
+  raw: {unicode: none, casefold: false, remove_whitespace: false, remove_punctuation: false}
+  standard:
+    unicode: NFKC
+    casefold: true
+    remove_whitespace: true
+    remove_punctuation: true
+    convert_numbers: false
+    kana_fold: false

@@ -1,0 +1,62 @@
+schema_version: 1
+datasets:
+  reazonspeech_dataset:
+    display_name: ReazonSpeech dataset
+    reason_code: article_30_4_only
+    reason: Use is limited to purposes covered by Article 30-4 of Japan's Copyright Act.
+    source_url: https://huggingface.co/datasets/reazon-research/reazonspeech
+  jsut:
+    display_name: JSUT
+    reason_code: commercial_permission_required
+    reason: Commercial use of audio requires separate contact and permission.
+    source_url: https://sites.google.com/site/shinnosuketakamichi/publication/jsut
+  jvs:
+    display_name: JVS
+    reason_code: non_commercial
+    reason: Default audio terms are research and non-commercial.
+    source_url: https://sites.google.com/site/shinnosuketakamichi/research-topics/jvs_corpus
+  jsss:
+    display_name: JSSS
+    reason_code: non_commercial
+    reason: Audio is limited to research and non-commercial use.
+    source_url: https://sites.google.com/site/shinnosuketakamichi/research-topics/jsss_corpus
+  jecs:
+    display_name: JECS
+    reason_code: non_commercial
+    reason: Audio is limited to research and non-commercial use.
+    source_url: https://sites.google.com/site/shinnosuketakamichi/research-topics/jecs_corpus
+  j_chat:
+    display_name: J-CHAT
+    reason_code: non_commercial
+    reason: Commercial use is prohibited.
+    source_url: https://huggingface.co/datasets/sarulab-speech/J-CHAT
+  csj:
+    display_name: Corpus of Spontaneous Japanese
+    reason_code: commercial_permission_required
+    reason: Commercial use requires consultation and the full corpus is paid.
+    source_url: https://clrd.ninjal.ac.jp/csj/en/
+  cejc:
+    display_name: Corpus of Everyday Japanese Conversation
+    reason_code: commercial_or_free_use_unclear
+    reason: Free and immediately available commercial use is not established.
+    source_url: https://www2.ninjal.ac.jp/conversation/cejc.html
+  tedxjp_10k:
+    display_name: TEDxJP-10K
+    reason_code: upstream_rights_unclear
+    reason: Per-video rights cannot be guaranteed as one commercial benchmark.
+    source_url: https://github.com/laboroai/TEDxJP-10K
+  jtubespeech:
+    display_name: JTubeSpeech family
+    reason_code: research_only_upstream_media
+    reason: YouTube-derived data has research-purpose and upstream-rights constraints.
+    source_url: https://github.com/sarulab-speech/jtubespeech
+  magichub_free_ja:
+    display_name: MagicHub free Japanese corpora
+    reason_code: non_commercial
+    reason: Free releases commonly include NC or non-commercial research terms.
+    source_url: https://magichub.com/datasets/
+  unknown_huggingface_mirror:
+    display_name: Unknown-license Hugging Face mirror
+    reason_code: unknown_license
+    reason: A mirror cannot replace missing upstream license and rights evidence.
+    source_url: https://huggingface.co/datasets

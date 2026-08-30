@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kotomimi.local/schemas/ja-eval-report-v1.json",
+  "title": "Kotomimi Japanese ASR evaluation report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "run_id", "suite", "system", "environment", "metrics", "datasets", "subsets", "failures"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "run_id": {"type": "string", "minLength": 1},
+    "suite": {
+      "type": "object",
+      "required": ["name", "version", "lock_sha256", "purpose", "quality_status", "evaluation_view", "release_gate_eligible"],
+      "properties": {
+        "name": {"type": "string"},
+        "version": {"type": "integer", "minimum": 1},
+        "lock_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "purpose": {"type": "string", "minLength": 1},
+        "quality_status": {"enum": ["functional", "experimental", "candidate", "approved"]},
+        "evaluation_view": {"enum": ["functional", "official", "clean", "stress"]},
+        "release_gate_eligible": {"type": "boolean"}
+      }
+    },
+    "system": {"type": "object"},
+    "environment": {"type": "object"},
+    "metrics": {
+      "type": "object",
+      "required": ["normalized_micro_cer", "dataset_macro_cer"],
+      "properties": {
+        "normalized_micro_cer": {"type": "number", "minimum": 0},
+        "dataset_macro_cer": {"type": "number", "minimum": 0},
+        "p95_latency_ms": {"type": ["number", "null"], "minimum": 0}
+      }
+    },
+    "datasets": {"type": "object"},
+    "data_provenance": {"type": "object"},
+    "subsets": {"type": "object"},
+    "qc": {"type": "object"},
+    "artifacts": {"type": "object"},
+    "failures": {"type": "array", "items": {"type": "object"}}
+  }
+}

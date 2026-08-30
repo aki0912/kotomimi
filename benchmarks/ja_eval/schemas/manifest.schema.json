@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kotomimi.local/schemas/ja-eval-manifest-row-v1.json",
+  "title": "Kotomimi Japanese evaluation manifest row",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "sample_id", "dataset_id", "dataset_version",
+    "source_split", "source_sample_id", "audio_path", "source_audio_path",
+    "source_audio_sha256", "audio_sha256", "pcm_sha256", "sample_rate", "channels", "duration_s",
+    "reference_raw", "reference_nfc", "reference_eval", "categories",
+    "metadata", "license", "qc"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "sample_id": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "dataset_id": {"type": "string", "minLength": 1},
+    "dataset_version": {"type": "string", "minLength": 1},
+    "source_split": {"type": "string", "minLength": 1},
+    "source_sample_id": {"type": "string", "minLength": 1},
+    "audio_path": {"type": "string", "minLength": 1},
+    "source_audio_path": {"type": "string", "minLength": 1},
+    "source_audio_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "audio_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "pcm_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "sample_rate": {"type": "integer", "minimum": 1},
+    "channels": {"type": "integer", "minimum": 1},
+    "duration_s": {"type": "number", "exclusiveMinimum": 0},
+    "reference_raw": {"type": "string", "minLength": 1},
+    "reference_nfc": {"type": "string", "minLength": 1},
+    "reference_eval": {"type": "string", "minLength": 1},
+    "speaker_id": {"type": ["string", "null"]},
+    "categories": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "metadata": {"type": "object"},
+    "license": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["spdx", "policy", "attribution_key"],
+      "properties": {
+        "spdx": {"type": "string"},
+        "policy": {"enum": ["strict", "sharealike", "manual-review"]},
+        "attribution_key": {"type": "string", "minLength": 1}
+      }
+    },
+    "qc": {
+      "type": "object",
+      "required": ["hard_pass", "flags"],
+      "properties": {
+        "hard_pass": {"type": "boolean"},
+        "flags": {"type": "array", "items": {"type": "string"}, "uniqueItems": true}
+      }
+    }
+  }
+}

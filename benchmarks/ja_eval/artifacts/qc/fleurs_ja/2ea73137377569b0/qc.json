@@ -1,0 +1,86 @@
+{
+  "clean_exclude_flags": [
+    "dc_offset",
+    "duplicate_audio_text",
+    "duplicate_pcm",
+    "high_speech_fraction",
+    "long_leading_silence",
+    "long_trailing_silence",
+    "low_japanese_ratio",
+    "low_speech_fraction",
+    "possible_clipping",
+    "repeated_chars",
+    "replacement_char",
+    "suspicious_markup",
+    "too_long",
+    "too_short",
+    "very_loud",
+    "very_quiet"
+  ],
+  "dataset_id": "fleurs_ja",
+  "dataset_version": "70bb2e84b976b7e960aa89f1c648e09c59f894dd",
+  "duplicates": {
+    "audio_and_text": {
+      "affected_rows": 0,
+      "groups": 0
+    },
+    "prepared_pcm": {
+      "affected_rows": 0,
+      "groups": 0
+    },
+    "raw_text": {
+      "affected_rows": 552,
+      "groups": 223
+    },
+    "source_audio": {
+      "affected_rows": 0,
+      "groups": 0
+    },
+    "source_id": {
+      "affected_rows": 0,
+      "groups": 0
+    },
+    "speaker_and_text": {
+      "affected_rows": 0,
+      "groups": 0
+    }
+  },
+  "flag_counts": {
+    "high_speech_fraction": 270,
+    "latin_mixed": 66,
+    "long_leading_silence": 174,
+    "long_trailing_silence": 79,
+    "low_speech_fraction": 79,
+    "possible_clipping": 2,
+    "very_quiet": 79
+  },
+  "generated_at": "2026-08-29T23:28:41.097530+00:00",
+  "hard_failures": [],
+  "input_manifest_sha256": "2ea73137377569b052f0e9228c1d36fb3eb9b62acc297d65ae65398f4f1844b8",
+  "input_rows": 650,
+  "reference_raw_sha256": "b7e4067a0487246f3d79cfc416d28365877e8fe7d0db2a43c681740c1764d2d8",
+  "schema_version": 1,
+  "source_split": "test",
+  "speech_activity": {
+    "frame_ms": 20,
+    "method": "20ms-frame-rms>=configured-dbfs",
+    "threshold_dbfs": -40.0
+  },
+  "views": {
+    "clean": {
+      "manifest_relative_to_data_root": "manifests/qc/fleurs_ja/70bb2e84b976b7e960aa89f1c648e09c59f894dd/2ea73137377569b0/clean.manifest.jsonl",
+      "manifest_sha256": "964b171075c6151168be40e3db9f769c3d2f513d87db5795e7cb2dfcdfc8ac20",
+      "rows": 204
+    },
+    "official": {
+      "manifest_relative_to_data_root": "manifests/qc/fleurs_ja/70bb2e84b976b7e960aa89f1c648e09c59f894dd/2ea73137377569b0/official.manifest.jsonl",
+      "manifest_sha256": "1dc7c3d3765286460c3f27045cc6f1f381e969a22320a777e693039b6083955b",
+      "rows": 650
+    },
+    "stress": {
+      "manifest_relative_to_data_root": "manifests/qc/fleurs_ja/70bb2e84b976b7e960aa89f1c648e09c59f894dd/2ea73137377569b0/stress.manifest.jsonl",
+      "manifest_sha256": "bcc24cba91c7054f0e5ce3fa85a52fc7afec8b0b6792b043043f198194fc58c3",
+      "rows": 446
+    }
+  }
+}

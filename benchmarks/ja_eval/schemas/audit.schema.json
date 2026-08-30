@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kotomimi.local/schemas/ja-eval-audit-v1.json",
+  "title": "Kotomimi Japanese evaluation audit decision",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "audit_id", "sample_id", "label", "reviewed_at"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "audit_id": {"type": "string", "minLength": 1},
+    "sample_id": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "label": {
+      "enum": ["ok", "minor_transcript_issue", "major_transcript_mismatch", "bad_audio", "truncated_audio", "wrong_language", "unexpected_nonverbal", "duplicate", "uncertain"]
+    },
+    "reviewed_at": {"type": "string", "format": "date-time"},
+    "spoken_text_notes": {"type": "string"},
+    "noise_level": {"enum": ["clean", "mild", "heavy"]},
+    "speech_style": {"enum": ["read", "spontaneous", "acted", "nonverbal"]},
+    "reviewer_comment": {"type": "string"}
+  }
+}

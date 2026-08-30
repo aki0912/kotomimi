@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kotomimi-ja-eval"
+version = "0.1.0"
+description = "Commercial-use Japanese ASR benchmark tooling"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+  "PyYAML>=6.0,<7",
+  "huggingface_hub>=1.28,<2",
+  "jsonschema>=4.26,<5",
+]
+
+[project.optional-dependencies]
+mdc = ["datacollective==0.5.7"]
+
+[project.scripts]
+kotomimi-eval = "kotomimi_eval.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

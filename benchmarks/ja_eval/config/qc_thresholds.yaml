@@ -1,0 +1,40 @@
+schema_version: 1
+audio:
+  hard_min_duration_s: 0.1
+  hard_max_duration_s: 60.0
+  too_short_s: 0.5
+  too_long_s: 30.0
+  very_quiet_dbfs: -50.0
+  very_loud_dbfs: -3.0
+  clipping_amplitude: 0.999
+  clipping_fraction: 0.001
+  dc_offset: 0.02
+  leading_silence_s: 1.0
+  trailing_silence_s: 1.0
+  low_speech_fraction: 0.15
+  high_speech_fraction: 0.98
+  speech_frame_ms: 20
+  speech_frame_dbfs: -40.0
+text:
+  very_short_chars: 1
+  very_long_chars: 300
+  digit_heavy_ratio: 0.3
+  minimum_language_char_ratio: 0.8
+clean:
+  exclude_flags:
+    - too_short
+    - too_long
+    - very_quiet
+    - very_loud
+    - possible_clipping
+    - dc_offset
+    - long_leading_silence
+    - long_trailing_silence
+    - low_speech_fraction
+    - high_speech_fraction
+    - replacement_char
+    - suspicious_markup
+    - low_japanese_ratio
+    - repeated_chars
+    - duplicate_pcm
+    - duplicate_audio_text
